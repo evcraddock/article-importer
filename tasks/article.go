@@ -2,6 +2,7 @@ package tasks
 
 import (
 	//"fmt"
+	"log"
 	"encoding/csv"
 	"strings"
 	"time"
@@ -20,6 +21,22 @@ type Article struct {
 }
 
 func (this *Task) CreateNewArticle() (*Article, error) {
+	if this.service.Username == "" {
+		this.service.Username = AskForStringValue("Username", "")
+	}
+
+	if this.service.Password == "" {
+		this.service.Password = AskForStringValue("Password", "")
+	}
+
+	if this.service.ServiceUrl == "" {
+		this.service.ServiceUrl = AskForStringValue("Service Url", "")
+	}
+
+	if this.service.AuthKey == "" {
+		log.Fatal("AuthKey environment variable must be set.")
+	}
+
 	title := AskForStringValue("Article Title", "")
 	publishDate := AskForDateValue("Publish Date")
 	articleUrl := AskForStringValue("Permalink", "")
