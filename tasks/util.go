@@ -15,7 +15,7 @@ func AskForStringValue(label string, defaultValue string) string {
 	for {
 		labelValue := label
 		if defaultValue != "" {
-			labelValue = label + " <" + defaultValue + ">"
+			labelValue = label + " {" + defaultValue + "}"
 		}
 
 		fmt.Printf("%s : ", labelValue)
@@ -35,13 +35,12 @@ func AskForStringValue(label string, defaultValue string) string {
 	}
 }
 
-func AskForDateValue(label string) time.Time {
+func AskForDateValue(label string, defaultValue time.Time) time.Time {
 	reader := bufio.NewReader(os.Stdin)
-	now := time.Now()
-	dateValue := time.Now()
+	dateValue := defaultValue
 
 	for {
-		fmt.Printf("%s (%d/%d/%d) : ", label, now.Month(), now.Day(), now.Year())
+		fmt.Printf("%s {%d/%d/%d} : ", label, defaultValue.Month(), defaultValue.Day(), defaultValue.Year())
 
 		response, err := reader.ReadString('\n')
 		if err != nil {
@@ -50,7 +49,7 @@ func AskForDateValue(label string) time.Time {
 
 		datestring := strings.Replace(response, "\n", "", -1)
 		if len(datestring) == 0 {
-			return now
+			return defaultValue
 		}
 
 		dateValue, err = time.Parse("01/02/2006", datestring)

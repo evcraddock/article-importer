@@ -4,7 +4,7 @@ import (
 	"bytes"
 	"encoding/json"
 	"encoding/base64"
-	//"fmt"
+	"fmt"
 	"net/http"
 	//"net/http/httputil"
 	"log"
@@ -57,35 +57,44 @@ func (this *HttpService) GetJson(endpoint string, id string, target interface{})
     return json.NewDecoder(r.Body).Decode(target)
 }
 
-func (this *HttpService) PostJson(endpoint string, target interface{}) error {
+func (this *HttpService) SendRequest(verb string, endpoint string, target interface{}) error {
+	url := this.ServiceUrl + "/" + endpoint
 	currentUser, err := this.getUserToken()
 	if err != nil {
 		log.Fatal(err)
 	}
 
-	b, err := json.Marshal(target)
-	if err !=nil {
-		log.Fatal(err)
+	var req *http.Request
+
+	if target != nil {
+		b, err := json.Marshal(target)
+		if err !=nil {
+			log.Fatal(err)
+		}
+
+		req, err = http.NewRequest(verb, url, bytes.NewReader(b))
+		req.Header.Set("Content-Type", "application/json")
+	} else {
+		req, err = http.NewRequest(verb, url, nil)
 	}
 
-	url := this.ServiceUrl + "/" + endpoint
-
-	req, err := http.NewRequest("POST", url, bytes.NewReader(b))
 	req.Header.Set("Authorization", "Bearer " + currentUser.Token)
-    req.Header.Set("Content-Type", "application/json")
 
     client := &http.Client{}
     res, err := client.Do(req)
+    if err != nil {
+    	fmt.Printf("Error sending request")
+    }
     
     defer res.Body.Close()
-
-    err = json.NewDecoder(res.Body).Decode(target)
+    if target != nil {
+	    err = json.NewDecoder(res.Body).Decode(target)
+	}
 
     return err
 }
 
 func (this *HttpService) getUserToken() (*AuthUser, error) {
-	log.Println("Getting User Token")
 
 	authBody := &AuthBody{
 		this.AuthKey,
@@ -106,6 +115,7 @@ func (this *HttpService) getUserToken() (*AuthUser, error) {
 
  //    dump, err := httputil.DumpRequestOut(req, true)
 	// if err != nil {
+	// 	fmt.Printf("error getting user token\n")
 	// 	log.Fatal(err)
 	// }
 

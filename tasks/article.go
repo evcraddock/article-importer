@@ -20,7 +20,7 @@ type Article struct {
 	Tags			[]string 		`json:"tags"`
 }
 
-func (this *Task) CreateNewArticle() (*Article, error) {
+func (this *Task) SaveArticle(article *Article) (*Article, error) {
 	if this.service.Username == "" {
 		this.service.Username = AskForStringValue("Username", "")
 	}
@@ -37,23 +37,18 @@ func (this *Task) CreateNewArticle() (*Article, error) {
 		log.Fatal("AuthKey environment variable must be set.")
 	}
 
-	title := AskForStringValue("Article Title", "")
-	publishDate := AskForDateValue("Publish Date")
-	articleUrl := AskForStringValue("Permalink", "")
-	bannerUrl := AskForStringValue("Banner Url", "/images/articles/bronco_stadium.jpg")
-	dataSource := AskForStringValue("Data source", "")
-	author := AskForStringValue("Author Name", "")
-	categories := AskForStringValue("Categories (csv)", "")
-	tags := AskForStringValue("Tags (csv)", "")
+	article.Title = AskForStringValue("Article Title", article.Title)
+	article.PublishDate = AskForDateValue("Publish Date", article.PublishDate)
+	article.Url = AskForStringValue("Permalink", article.Url)
+	article.Banner = AskForStringValue("Banner Url", article.Banner)
+	article.DataSource = AskForStringValue("Data source", article.DataSource)
+	article.Author = AskForStringValue("Author Name", article.Author)
 
-	var article *Article = &Article{
-		Title: title,
-		PublishDate: publishDate,
-		Url: articleUrl,
-		Banner: bannerUrl,
-		DataSource: dataSource,
-		Author: author,
-	}
+	current_categories := strings.Join(article.Categories, ", ")
+	current_tags := strings.Join(article.Tags, ", ")
+
+	categories := AskForStringValue("Categories (csv)", current_categories)
+	tags := AskForStringValue("Tags (csv)", current_tags)
 
 	r := csv.NewReader(strings.NewReader(categories))
 	article.Categories, _ = r.Read()
@@ -61,8 +56,64 @@ func (this *Task) CreateNewArticle() (*Article, error) {
 	r = csv.NewReader(strings.NewReader(tags))
 	article.Tags, _ = r.Read()	
 
-	err := this.service.PostJson("articles", article)
-	return article, err 
+	requestMethod := "POST"
+	requestUrl := "articles"
+
+	if article.Id != "" {
+		requestMethod = "PUT"
+		requestUrl = "articles/" + article.Id
+	}
+
+	err := this.service.SendRequest(requestMethod, requestUrl, article)
+
+	return article, err
+}
+
+func (this *Task) UpdateArticle() (*Article, error) {
+	
+	article, err := this.GetArticle()
+
+	if err != nil {
+		log.Fatal(err)
+	}
+
+	return this.SaveArticle(article)
+}
+
+func (this *Task) CreateNewArticle() (*Article, error) {
+	var article *Article = &Article{
+		Title: "",
+		PublishDate: time.Now(),
+		Url: "",
+		Banner: "/images/articles/bronco_stadium.jpg",
+		DataSource: "",
+		Author: "",
+	}
+
+	return this.SaveArticle(article)
+}
+
+func (this *Task) DeleteArticle() (string, error) {
+	id := AskForStringValue("Article Id", "")
+	if this.service.Username == "" {
+		this.service.Username = AskForStringValue("Username", "")
+	}
+
+	if this.service.Password == "" {
+		this.service.Password = AskForStringValue("Password", "")
+	}
+
+	if this.service.ServiceUrl == "" {
+		this.service.ServiceUrl = AskForStringValue("Service Url", "")
+	}
+
+	if this.service.AuthKey == "" {
+		log.Fatal("AuthKey environment variable must be set.")
+	}
+
+	requestUrl := "articles/" + id
+
+	return id, this.service.SendRequest("DELETE", requestUrl, nil)
 }
 
 func (this *Task) GetArticle() (*Article, error) {

@@ -9,6 +9,7 @@ import (
 )
 
 func main() {
+
 	configSettings := config.NewConfiguration()
 	
 
@@ -55,6 +56,34 @@ func main() {
 	        }
 
 	        fmt.Printf("Successfull Created Article %s on %v\n", article.Title, article.PublishDate)
+	        return nil
+	      },
+	    },
+	    {
+	      Name:  "update-article",
+	      Usage: "update an existing article",
+	      Action: func(c *cli.Context) error {
+	      	task := tasks.NewTask(configSettings)
+	        article, err := task.UpdateArticle()
+	        if err != nil {
+	        	return cli.NewExitError(err.Error(), 86)
+	        }
+
+	        fmt.Printf("Successfull Updated Article %s on %v\n", article.Title, article.PublishDate)
+	        return nil
+	      },
+	    },
+	    {
+	      Name:  "delete-article",
+	      Usage: "delete an existing article",
+	      Action: func(c *cli.Context) error {
+	      	task := tasks.NewTask(configSettings)
+	        articleId, err := task.DeleteArticle()
+	        if err != nil {
+	        	return cli.NewExitError(err.Error(), 86)
+	        }
+
+	        fmt.Printf("Successfull Deleted Article %s \n", articleId)
 	        return nil
 	      },
 	    },
