@@ -3,8 +3,6 @@ package tasks
 import (
 	//"fmt"
 	"log"
-	"encoding/csv"
-	"strings"
 	"time"
 )
 
@@ -43,19 +41,9 @@ func (this *Task) SaveArticle(article *Article) (*Article, error) {
 	article.Banner = AskForStringValue("Banner Url", article.Banner)
 	article.DataSource = AskForStringValue("Data source", article.DataSource)
 	article.Author = AskForStringValue("Author Name", article.Author)
-
-	current_categories := strings.Join(article.Categories, ", ")
-	current_tags := strings.Join(article.Tags, ", ")
-
-	categories := AskForStringValue("Categories (csv)", current_categories)
-	tags := AskForStringValue("Tags (csv)", current_tags)
-
-	r := csv.NewReader(strings.NewReader(categories))
-	article.Categories, _ = r.Read()
-
-	r = csv.NewReader(strings.NewReader(tags))
-	article.Tags, _ = r.Read()	
-
+	article.Categories = AskForCsv("Categories (csv)", article.Categories)
+	article.Tags = AskForCsv("Tags (csv)", article.Tags)
+	
 	requestMethod := "POST"
 	requestUrl := "articles"
 

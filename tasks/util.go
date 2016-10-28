@@ -2,6 +2,7 @@ package tasks
 
 import (
 	"bufio"
+	"encoding/csv"
 	"fmt"
 	"log"
 	"os"
@@ -33,6 +34,16 @@ func AskForStringValue(label string, defaultValue string) string {
 
 		return value
 	}
+}
+
+func AskForCsv(label string, defaultValue []string) []string {
+	csvstring := strings.Join(defaultValue, ", ")
+
+	newcsv := AskForStringValue(label, csvstring)
+
+	r := csv.NewReader(strings.NewReader(newcsv))
+	stringArray, _ := r.Read()	
+	return stringArray
 }
 
 func AskForDateValue(label string, defaultValue time.Time) time.Time {
