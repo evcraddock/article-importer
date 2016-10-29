@@ -87,6 +87,34 @@ func main() {
 	        return nil
 	      },
 	    },
+	    {
+	      Name:  "new-link",
+	      Usage: "create a new link",
+	      Action: func(c *cli.Context) error {
+	      	task := tasks.NewTask(configSettings)
+	        link, err := task.CreateNewLink()
+	        if err != nil {
+	        	return cli.NewExitError(err.Error(), 86)
+	        }
+
+	        fmt.Printf("Successfull Link %s \n", link.Title)
+	        return nil
+	      },
+	    },
+	    {
+	      Name:  "delete-link",
+	      Usage: "delete an existing link",
+	      Action: func(c *cli.Context) error {
+	      	task := tasks.NewTask(configSettings)
+	        linkId, err := task.DeleteLink()
+	        if err != nil {
+	        	return cli.NewExitError(err.Error(), 86)
+	        }
+
+	        fmt.Printf("Successfull Deleted link %s \n", linkId)
+	        return nil
+	      },
+	    },
 	}
 
 	app.Run(os.Args)
