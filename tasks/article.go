@@ -1,10 +1,10 @@
 package tasks
 
 import (
-	"encoding/base64"
 	"fmt"
 	"io/ioutil"
 	"log"
+	"strings"
 	"time"
 	"github.com/ericaro/frontmatter"
 )
@@ -33,6 +33,36 @@ type ImportArticle struct {
 	Categories		string			`yaml:"categories"`
 	Tags			string 			`yaml:"tags"`
 	Content			string 			`fm:"content" yaml:"-"`
+}
+
+func (this *Task) saveMarkdownFile(article Article) error {
+
+	fmt.Printf("Saving Markdown file to %s\n", article.DataSource)
+	
+	var importfile *ImportArticle = &ImportArticle{
+		article.Id,
+		article.Title,
+		article.Url,
+		article.Banner,
+		article.PublishDate.Format("01/02/2006"),
+		article.DataSource,
+		article.Author,
+		strings.Join(article.Categories, ", "),
+		strings.Join(article.Tags, ", "),
+		article.Content,
+	}
+
+	data, err := frontmatter.Marshal(importfile)
+	if err != nil {
+	    fmt.Printf("err! %s", err.Error())
+	}
+
+	err = ioutil.WriteFile(article.DataSource, data, 0644)
+	if err != nil {
+		log.Fatal(err)
+	}
+
+	return err
 }
 
 func (this *Task) SaveArticle(article *Article) (*Article, error) {
@@ -71,7 +101,7 @@ func (this *Task) SaveArticle(article *Article) (*Article, error) {
 
 	err := this.service.SendRequest(requestMethod, requestUrl, article)
 
-	//TODO: Save yaml file
+	this.saveMarkdownFile(*article)
 
 	return article, err
 }
@@ -111,6 +141,10 @@ func (this *Task) LoadArticle() (*Article, error) {
 	    return this.SaveArticle(article)
 	}
 
+	if importfile.Id != "" {
+		article.Id = importfile.Id
+	}
+
 	importPublishDate, err := time.Parse("01/02/2006", importfile.PublishDate)
 	if err == nil {
 		article.PublishDate = importPublishDate
@@ -127,10 +161,7 @@ func (this *Task) LoadArticle() (*Article, error) {
 	article.DataSource = fileName
 	article.Categories, _ = getStringArray(importfile.Categories)
 	article.Tags, _ = getStringArray(importfile.Tags)
-
-	if importfile.Content != "" {
-		article.Content = base64.StdEncoding.EncodeToString([]byte(importfile.Content))
-	}
+	article.Content = importfile.Content
 
 	return this.SaveArticle(article)
 }
