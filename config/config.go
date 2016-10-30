@@ -6,24 +6,33 @@ import (
 )
 
 type Settings struct {
+	Auth 				Authorization
+	articleLocation		string
+}
+
+type Authorization struct {
 	AuthKey			string
 	ServiceUrl		string
 	UserName		string
 	Password		string
-	UserToken		string
 }
 
 func NewConfiguration() * Settings {
 
 	serviceUrl := getEnvironmentVariable("Article_Service_Url", "http://localhost:9000")
-	authKey := getEnvironmentVariable("Ariticle_Server_AuthKey", "VIrPcAi4Rff0gBwdWklRl3ywMwgC6mZH") 
+	authKey := getEnvironmentVariable("Ariticle_Server_AuthKey", "VIrPcAi4Rff0gBwdWklRl3ywMwgC6mZH")
+	articleLocation := getEnvironmentVariable("Article_Location", "articles/")
 
-	configSettings := &Settings{
+	authSettings := &Authorization{
 		authKey,
 		serviceUrl,
 		"",
 		"",
-		"",
+	}
+
+	configSettings := &Settings{
+		*authSettings,
+		articleLocation,
 	}
 
 	return configSettings

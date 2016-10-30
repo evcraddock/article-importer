@@ -16,25 +16,25 @@ type Link struct {
 
 func (this *Task) saveLink(link *Link) (*Link, error) {
 	if this.service.Username == "" {
-		this.service.Username = AskForStringValue("Username", "")
+		this.service.Username = AskForStringValue("Username", "", true)
 	}
 
 	if this.service.Password == "" {
-		this.service.Password = AskForStringValue("Password", "")
+		this.service.Password = AskForStringValue("Password", "", true)
 	}
 
 	if this.service.ServiceUrl == "" {
-		this.service.ServiceUrl = AskForStringValue("Service Url", "")
+		this.service.ServiceUrl = AskForStringValue("Service Url", "", true)
 	}
 
 	if this.service.AuthKey == "" {
 		log.Fatal("AuthKey environment variable must be set.")
 	}
 
-	link.Title = AskForStringValue("Title", link.Title)
-	link.LinkTitle = AskForStringValue("Link Title", link.LinkTitle)
-	link.Url = AskForStringValue("Permalink", link.Url)
-	link.Banner = AskForStringValue("Banner Url", link.Banner)
+	link.Title = AskForStringValue("Title", link.Title, true)
+	link.LinkTitle = AskForStringValue("Link Title", link.LinkTitle, true)
+	link.Url = AskForStringValue("Permalink", link.Url, true)
+	link.Banner = AskForStringValue("Banner Url", link.Banner, false)
 	link.Categories = AskForCsv("Categories (csv)", link.Categories)
 	link.Tags = AskForCsv("Tags (csv)", link.Tags)
 	
@@ -58,17 +58,17 @@ func (this *Task) CreateNewLink() (*Link, error) {
 }
 
 func (this *Task) DeleteLink() (string, error) {
-	id := AskForStringValue("Link Id", "")
+	id := AskForStringValue("Link Id", "", true)
 	if this.service.Username == "" {
-		this.service.Username = AskForStringValue("Username", "")
+		this.service.Username = AskForStringValue("Username", "", true)
 	}
 
 	if this.service.Password == "" {
-		this.service.Password = AskForStringValue("Password", "")
+		this.service.Password = AskForStringValue("Password", "", true)
 	}
 
 	if this.service.ServiceUrl == "" {
-		this.service.ServiceUrl = AskForStringValue("Service Url", "")
+		this.service.ServiceUrl = AskForStringValue("Service Url", "", true)
 	}
 
 	if this.service.AuthKey == "" {

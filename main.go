@@ -28,34 +28,34 @@ func main() {
 	      Name:        "username",
 	      Value:       "",
 	      Usage:       "",
-	      Destination: &configSettings.UserName,
+	      Destination: &configSettings.Auth.UserName,
 	    },
 	    cli.StringFlag{
 	      Name:        "password",
 	      Value:       "",
 	      Usage:       "",
-	      Destination: &configSettings.Password,
+	      Destination: &configSettings.Auth.Password,
 	    },
 	    cli.StringFlag{
 	      Name:        "serviceUrl",
-	      Value:       configSettings.ServiceUrl,
+	      Value:       configSettings.Auth.ServiceUrl,
 	      Usage:       "",
-	      Destination: &configSettings.ServiceUrl,
+	      Destination: &configSettings.Auth.ServiceUrl,
 	    },
 	}
 
 	app.Commands = []cli.Command{
 	    {
-	      Name:  "new-article",
-	      Usage: "create a new article",
+	      Name:  "load-article",
+	      Usage: "load article from yaml file",
 	      Action: func(c *cli.Context) error {
 	      	task := tasks.NewTask(configSettings)
-	        article, err := task.CreateNewArticle()
+	        article, err := task.LoadArticle()
 	        if err != nil {
 	        	return cli.NewExitError(err.Error(), 86)
 	        }
 
-	        fmt.Printf("Successfull Created Article %s on %v\n", article.Title, article.PublishDate)
+	        fmt.Printf("Successfull Loaded Article %s (Id: %s) on %v\n", article.Title, article.Id, article.PublishDate)
 	        return nil
 	      },
 	    },

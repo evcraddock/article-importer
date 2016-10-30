@@ -8,7 +8,7 @@ import (
 	"os"
 	"strings"
 	"time"
-	
+
 	"github.com/evcraddock/article-importer/config"
 	"github.com/evcraddock/article-importer/service"
 )
@@ -18,7 +18,7 @@ type Task struct {
 }
 
 func NewTask(settings *config.Settings) *Task {
-	service := service.NewHttpService(settings)
+	service := service.NewHttpService(settings.Auth)
 
 	task := &Task{
 		service,
@@ -27,13 +27,18 @@ func NewTask(settings *config.Settings) *Task {
 	return task
 }
 
-func AskForStringValue(label string, defaultValue string) string {
+func AskForStringValue(label string, defaultValue string, required bool) string {
 	reader := bufio.NewReader(os.Stdin)
 
 	for {
 		labelValue := label
 		if defaultValue != "" {
 			labelValue = label + " {" + defaultValue + "}"
+		}
+
+		if required {
+			requiredtext := "*"
+			labelValue = labelValue + " " + requiredtext
 		}
 
 		fmt.Printf("%s : ", labelValue)
@@ -49,6 +54,11 @@ func AskForStringValue(label string, defaultValue string) string {
 			value = defaultValue
 		}
 
+		if required && strings.Trim(value, " ") == "" {
+			fmt.Printf("")
+			continue
+		}
+
 		return value
 	}
 }
@@ -56,7 +66,7 @@ func AskForStringValue(label string, defaultValue string) string {
 func AskForCsv(label string, defaultValue []string) []string {
 	csvstring := strings.Join(defaultValue, ", ")
 
-	newcsv := AskForStringValue(label, csvstring)
+	newcsv := AskForStringValue(label, csvstring, false)
 
 	r := csv.NewReader(strings.NewReader(newcsv))
 	stringArray, _ := r.Read()	
@@ -88,4 +98,9 @@ func AskForDateValue(label string, defaultValue time.Time) time.Time {
 
 		return dateValue
 	}
+}
+
+func getStringArray(value string) ([]string, error) {
+	r := csv.NewReader(strings.NewReader(value))
+	return r.Read()
 }

@@ -34,7 +34,7 @@ type AuthUser struct {
 	User 			User 			`json:"user"`
 }
 
-func NewHttpService(settings *config.Settings) * HttpService {
+func NewHttpService(settings config.Authorization) * HttpService {
 	svc := &HttpService{
 		settings.ServiceUrl,
 		settings.AuthKey,
