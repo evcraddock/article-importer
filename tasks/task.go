@@ -15,6 +15,7 @@ import (
 
 type Task struct {
 	service 			*service.HttpService
+	articleLocation		string
 }
 
 func NewTask(settings *config.Settings) *Task {
@@ -22,6 +23,7 @@ func NewTask(settings *config.Settings) *Task {
 
 	task := &Task{
 		service,
+		settings.ArticleLocation,
 	}
 
 	return task

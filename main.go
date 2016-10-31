@@ -48,9 +48,12 @@ func main() {
 	    {
 	      Name:  "load-article",
 	      Usage: "load article from yaml file",
+	      Flags: []cli.Flag{
+	          cli.BoolFlag{Name: "force, f"},
+	      },
 	      Action: func(c *cli.Context) error {
 	      	task := tasks.NewTask(configSettings)
-	        article, err := task.LoadArticle()
+	        article, err := task.LoadArticle(c.Bool("force"))
 	        if err != nil {
 	        	return cli.NewExitError(err.Error(), 86)
 	        }
@@ -62,9 +65,12 @@ func main() {
 	    {
 	      Name:  "update-article",
 	      Usage: "update an existing article",
+	      Flags: []cli.Flag{
+	          cli.BoolFlag{Name: "force, f"},
+	      },
 	      Action: func(c *cli.Context) error {
 	      	task := tasks.NewTask(configSettings)
-	        article, err := task.UpdateArticle()
+	        article, err := task.UpdateArticle(c.Bool("force"))
 	        if err != nil {
 	        	return cli.NewExitError(err.Error(), 86)
 	        }

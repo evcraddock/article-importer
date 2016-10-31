@@ -7,7 +7,7 @@ import (
 
 type Settings struct {
 	Auth 				Authorization
-	articleLocation		string
+	ArticleLocation		string
 }
 
 type Authorization struct {

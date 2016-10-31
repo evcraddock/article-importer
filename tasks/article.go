@@ -37,7 +37,8 @@ type ImportArticle struct {
 
 func (this *Task) saveMarkdownFile(article Article) error {
 
-	fmt.Printf("Saving Markdown file to %s\n", article.DataSource)
+	filelocation := this.articleLocation + article.DataSource
+	fmt.Printf("Saving Markdown file to %s\n", filelocation)
 	
 	var importfile *ImportArticle = &ImportArticle{
 		article.Id,
@@ -57,7 +58,7 @@ func (this *Task) saveMarkdownFile(article Article) error {
 	    fmt.Printf("err! %s", err.Error())
 	}
 
-	err = ioutil.WriteFile(article.DataSource, data, 0644)
+	err = ioutil.WriteFile(filelocation, data, 0644)
 	if err != nil {
 		log.Fatal(err)
 	}
@@ -65,7 +66,8 @@ func (this *Task) saveMarkdownFile(article Article) error {
 	return err
 }
 
-func (this *Task) SaveArticle(article *Article) (*Article, error) {
+func (this *Task) SaveArticle(article *Article, bypassquestions bool) (*Article, error) {
+	///bypassquestions := true
 	if this.service.Username == "" {
 		this.service.Username = AskForStringValue("Username", "", true)
 	}
@@ -82,14 +84,37 @@ func (this *Task) SaveArticle(article *Article) (*Article, error) {
 		log.Fatal("AuthKey environment variable must be set.")
 	}
 
-	article.Title = AskForStringValue("Article Title", article.Title, true)
-	article.PublishDate = AskForDateValue("Publish Date", article.PublishDate)
-	article.Url = AskForStringValue("Permalink", article.Url, true)
-	article.Banner = AskForStringValue("Banner Url", article.Banner, false)
-	article.DataSource = AskForStringValue("Data source", article.DataSource, false)
-	article.Author = AskForStringValue("Author Name", article.Author, true)
-	article.Categories = AskForCsv("Categories (csv)", article.Categories)
-	article.Tags = AskForCsv("Tags (csv)", article.Tags)
+	if article.Title == "" || bypassquestions == false {
+		article.Title = AskForStringValue("Article Title", article.Title, true)
+	}
+
+	if bypassquestions == false {
+		article.PublishDate = AskForDateValue("Publish Date", article.PublishDate)
+	}
+
+	if article.Url == "" || bypassquestions == false {
+		article.Url = AskForStringValue("Permalink", article.Url, true)
+	}
+
+	if article.Banner == "" || bypassquestions == false {
+		article.Banner = AskForStringValue("Banner Url", article.Banner, false)
+	}
+
+	if article.DataSource == "" || bypassquestions == false {
+		article.DataSource = AskForStringValue("Data source", article.DataSource, false)
+	}
+
+	if article.Author == "" || bypassquestions == false {
+		article.Author = AskForStringValue("Author Name", article.Author, true)
+	}
+
+	if bypassquestions == false {
+		article.Categories = AskForCsv("Categories (csv)", article.Categories)
+	}
+
+	if bypassquestions == false {
+		article.Tags = AskForCsv("Tags (csv)", article.Tags)
+	}
 	
 	requestMethod := "POST"
 	requestUrl := "articles"
@@ -106,7 +131,7 @@ func (this *Task) SaveArticle(article *Article) (*Article, error) {
 	return article, err
 }
 
-func (this *Task) UpdateArticle() (*Article, error) {
+func (this *Task) UpdateArticle(bypassQuestions bool) (*Article, error) {
 	
 	article, err := this.GetArticle()
 
@@ -114,10 +139,10 @@ func (this *Task) UpdateArticle() (*Article, error) {
 		log.Fatal(err)
 	}
 
-	return this.SaveArticle(article)
+	return this.SaveArticle(article, bypassQuestions)
 }
 
-func (this *Task) LoadArticle() (*Article, error) {
+func (this *Task) LoadArticle(bypassQuestions bool) (*Article, error) {
 	fileName := AskForStringValue("Import File location", "", false)	
 
 	var article *Article = &Article{
@@ -129,16 +154,17 @@ func (this *Task) LoadArticle() (*Article, error) {
 		Author: "",
 	}
 
-	artfile, err := ioutil.ReadFile(fileName)
+	importfilename := this.articleLocation + fileName
+	artfile, err := ioutil.ReadFile(importfilename)
 	if err != nil {
-		return this.SaveArticle(article)
+		return this.SaveArticle(article, false)
 	}
 
 	importfile := new(ImportArticle)
 	err = frontmatter.Unmarshal(artfile, importfile)
 	if err != nil {
 	    fmt.Printf("Error unmarshaling yaml file: %s", err.Error())
-	    return this.SaveArticle(article)
+	    return this.SaveArticle(article, false)
 	}
 
 	if importfile.Id != "" {
@@ -163,7 +189,7 @@ func (this *Task) LoadArticle() (*Article, error) {
 	article.Tags, _ = getStringArray(importfile.Tags)
 	article.Content = importfile.Content
 
-	return this.SaveArticle(article)
+	return this.SaveArticle(article, bypassQuestions)
 }
 
 func (this *Task) DeleteArticle() (string, error) {
