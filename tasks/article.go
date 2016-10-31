@@ -67,7 +67,6 @@ func (this *Task) saveMarkdownFile(article Article) error {
 }
 
 func (this *Task) SaveArticle(article *Article, bypassquestions bool) (*Article, error) {
-	///bypassquestions := true
 	if this.service.Username == "" {
 		this.service.Username = AskForStringValue("Username", "", true)
 	}
@@ -201,6 +200,7 @@ func (this *Task) DeleteArticle() (string, error) {
 	if this.service.Password == "" {
 		this.service.Password = AskForStringValue("Password", "", true)
 	}
+
 
 	if this.service.ServiceUrl == "" {
 		this.service.ServiceUrl = AskForStringValue("Service Url", "", true)

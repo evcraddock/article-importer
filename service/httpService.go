@@ -5,9 +5,11 @@ import (
 	"encoding/json"
 	"encoding/base64"
 	"fmt"
+	"errors"
 	"net/http"
 	//"net/http/httputil"
 	"log"
+	"strconv"
 	"github.com/evcraddock/article-importer/config"
 )
 
@@ -59,6 +61,7 @@ func (this *HttpService) GetJson(endpoint string, id string, target interface{})
 
 func (this *HttpService) SendRequest(verb string, endpoint string, target interface{}) error {
 	url := this.ServiceUrl + "/" + endpoint
+
 	currentUser, err := this.getUserToken()
 	if err != nil {
 		log.Fatal(err)
@@ -80,40 +83,7 @@ func (this *HttpService) SendRequest(verb string, endpoint string, target interf
 
 	req.Header.Set("Authorization", "Bearer " + currentUser.Token)
 
-    client := &http.Client{}
-    res, err := client.Do(req)
-    if err != nil {
-    	fmt.Printf("Error sending request")
-    }
-    
-    defer res.Body.Close()
-    if target != nil {
-	    err = json.NewDecoder(res.Body).Decode(target)
-	}
-
-    return err
-}
-
-func (this *HttpService) getUserToken() (*AuthUser, error) {
-
-	authBody := &AuthBody{
-		this.AuthKey,
-	}
-
-	b, err := json.Marshal(authBody)
-	if err !=nil {
-		log.Println("Error Marshaling")
-		log.Fatal(err)
-	}
-
-	authstring := basicAuth(this.Username, this.Password)
-	serviceUrl := this.ServiceUrl + "/auth?access_token=" + this.AuthKey 
-
-	req, err := http.NewRequest("POST", serviceUrl, bytes.NewReader(b))
-	req.Header.Set("Authorization", "Basic " + authstring)
-    req.Header.Set("Content-Type", "application/json")
-
- //    dump, err := httputil.DumpRequestOut(req, true)
+	//    dump, err := httputil.DumpRequestOut(req, true)
 	// if err != nil {
 	// 	fmt.Printf("error getting user token\n")
 	// 	log.Fatal(err)
@@ -123,19 +93,77 @@ func (this *HttpService) getUserToken() (*AuthUser, error) {
 
     client := &http.Client{}
     res, err := client.Do(req)
-
     if err != nil {
-    	log.Fatal(err)
+    	fmt.Printf("Error sending request: Status Code - " + strconv.Itoa(res.StatusCode))
     }
     
-    defer res.Body.Close()
+ //    defer res.Body.Close()
 
- //    dumpr, err := httputil.DumpResponse(res, true)
+ //       dumpr, err := httputil.DumpResponse(res, true)
 	// if err != nil {
 	// 	log.Fatal(err)
 	// }
 
 	// fmt.Printf("%q", dumpr)
+
+    if target != nil {
+	    err = json.NewDecoder(res.Body).Decode(target)
+	}
+
+	if err != nil {
+		fmt.Printf("Error sending request: %s", err.Error())
+	}
+
+    return err
+}
+
+func (this *HttpService) getUserToken() (*AuthUser, error) {
+
+	// authBody := &AuthBody{
+	// 	this.AuthKey,
+	// }
+
+	// b, err := json.Marshal(authBody)
+	// if err !=nil {
+	// 	log.Println("Error Marshaling")
+	// 	log.Fatal(err)
+	// }
+
+	authstring := basicAuth(this.Username, this.Password)
+	serviceUrl := this.ServiceUrl + "/auth?access_token=" + this.AuthKey 
+
+	req, err := http.NewRequest("POST", serviceUrl, nil)
+	req.Header.Set("Authorization", "Basic " + authstring)
+    req.Header.Set("Content-Type", "application/json")
+
+ //    dump, err := httputil.DumpRequestOut(req, true)
+	// if err != nil {
+	// 	fmt.Printf("error getting user token\n")
+	// 	log.Fatal(err)
+	// }
+
+	// fmt.Printf("%q\n\n", dump)
+
+    client := &http.Client{}
+    res, err := client.Do(req)
+
+    if err != nil {
+    	fmt.Printf("what is this \n")
+    	log.Fatal(err)
+    }
+    
+    defer res.Body.Close()
+
+    if res.StatusCode != 200 {
+    	err = errors.New("Unable to get user token: Status Code - " + strconv.Itoa(res.StatusCode))
+    	return nil, err
+    }
+ //    dumpr, err := httputil.DumpResponse(res, true)
+	// if err != nil {
+	// 	log.Fatal(err)
+	// }
+
+	// fmt.Printf("%q\n\n", dumpr)
 
     authUser := &AuthUser{}
 
