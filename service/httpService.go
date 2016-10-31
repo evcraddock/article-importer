@@ -154,7 +154,7 @@ func (this *HttpService) getUserToken() (*AuthUser, error) {
     
     defer res.Body.Close()
 
-    if res.StatusCode != 200 {
+    if res.StatusCode != 201 {
     	err = errors.New("Unable to get user token: Status Code - " + strconv.Itoa(res.StatusCode))
     	return nil, err
     }
