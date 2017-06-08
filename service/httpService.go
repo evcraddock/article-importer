@@ -6,6 +6,8 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
+	"io/ioutil"
+	"mime/multipart"
 	"net/http"
 	//"net/http/httputil"
 	"log"
@@ -58,6 +60,54 @@ func (this *HttpService) GetJson(endpoint string, id string, target interface{})
 
 	defer r.Body.Close()
 	return json.NewDecoder(r.Body).Decode(target)
+}
+
+func (this *HttpService) SendMultipart(endpoint string, filename string) ([]byte, error) {
+	url := this.ServiceUrl + "/" + endpoint
+
+	currentUser, err := this.getUserToken()
+	if err != nil {
+		log.Fatal(err)
+	}
+
+	body := &bytes.Buffer{}
+	bodyWriter := multipart.NewWriter(body)
+
+	// for k, v := range paramTexts {
+	// 	bodyWriter.WriteField(k, v.(string))
+	// }
+
+	fileContent, err := ioutil.ReadFile(filename)
+
+	if err != nil {
+		return nil, err
+	}
+
+	fileWriter, err := bodyWriter.CreateFormFile("img", filename)
+	if err != nil {
+		fmt.Println(err.Error())
+		return nil, err
+	}
+
+	fileWriter.Write(fileContent)
+
+	contentType := bodyWriter.FormDataContentType()
+
+	req, err := http.NewRequest("POST", url, body)
+	req.Header.Set("Authorization", "Bearer "+currentUser.Token)
+	req.Header.Add("Content-Type", contentType)
+
+	bodyWriter.Close()
+
+	client := &http.Client{}
+	res, err := client.Do(req)
+	if err != nil {
+		fmt.Printf("Error sending request: Status Code - " + strconv.Itoa(res.StatusCode))
+	}
+
+	defer res.Body.Close()
+
+	return ioutil.ReadAll(res.Body)
 }
 
 func (this *HttpService) SendRequest(verb string, endpoint string, target interface{}) error {
