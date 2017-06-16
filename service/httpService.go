@@ -6,11 +6,12 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
+	"io"
 	"io/ioutil"
+	"log"
 	"mime/multipart"
 	"net/http"
-	//"net/http/httputil"
-	"log"
+	"os"
 	"strconv"
 
 	"github.com/evcraddock/article-importer/config"
@@ -50,8 +51,8 @@ func NewHttpService(settings config.Authorization) *HttpService {
 	return svc
 }
 
-func (this *HttpService) GetJson(endpoint string, id string, target interface{}) error {
-	url := this.ServiceUrl + "/" + endpoint + "/" + id
+func (httpService *HttpService) GetJson(endpoint string, id string, target interface{}) error {
+	url := httpService.ServiceUrl + "/" + endpoint + "/" + id
 
 	r, err := http.Get(url)
 	if err != nil {
@@ -62,58 +63,73 @@ func (this *HttpService) GetJson(endpoint string, id string, target interface{})
 	return json.NewDecoder(r.Body).Decode(target)
 }
 
-func (this *HttpService) SendMultipart(endpoint string, filename string) ([]byte, error) {
-	url := this.ServiceUrl + "/" + endpoint
+func (httpService *HttpService) Upload(endpoint, filename string) ([]byte, error) {
+	url := httpService.ServiceUrl + "/" + endpoint
 
-	currentUser, err := this.getUserToken()
-	if err != nil {
-		log.Fatal(err)
-	}
+	var buffer bytes.Buffer
+	writer := multipart.NewWriter(&buffer)
 
-	body := &bytes.Buffer{}
-	bodyWriter := multipart.NewWriter(body)
-
-	// for k, v := range paramTexts {
-	// 	bodyWriter.WriteField(k, v.(string))
-	// }
-
-	fileContent, err := ioutil.ReadFile(filename)
-
+	file, err := os.Open(filename)
 	if err != nil {
 		return nil, err
 	}
 
-	fileWriter, err := bodyWriter.CreateFormFile("img", filename)
+	defer file.Close()
+
+	filewriter, err := writer.CreateFormFile("image", filename)
 	if err != nil {
-		fmt.Println(err.Error())
 		return nil, err
 	}
 
-	fileWriter.Write(fileContent)
+	_, err = io.Copy(filewriter, file)
+	if err != nil {
+		return nil, err
+	}
 
-	contentType := bodyWriter.FormDataContentType()
+	filewriter, err = writer.CreateFormField("key")
+	if err != nil {
+		return nil, err
+	}
 
-	req, err := http.NewRequest("POST", url, body)
+	_, err = filewriter.Write([]byte("KEY"))
+	if err != nil {
+		return nil, err
+	}
+
+	writer.Close()
+	req, err := http.NewRequest("POST", url, &buffer)
+	if err != nil {
+		return nil, err
+	}
+
+	req.Header.Set("Content-Type", writer.FormDataContentType())
+
+	currentUser, err := httpService.getUserToken()
+	if err != nil {
+		log.Printf("Can't get user token: %s", err.Error())
+		return nil, err
+	}
+
 	req.Header.Set("Authorization", "Bearer "+currentUser.Token)
-	req.Header.Add("Content-Type", contentType)
-
-	bodyWriter.Close()
 
 	client := &http.Client{}
 	res, err := client.Do(req)
 	if err != nil {
-		fmt.Printf("Error sending request: Status Code - " + strconv.Itoa(res.StatusCode))
+		return nil, err
 	}
 
-	defer res.Body.Close()
+	if res.StatusCode != http.StatusCreated {
+		err = fmt.Errorf("Unable to save file: statusCode %s", res.Status)
+		return nil, err
+	}
 
 	return ioutil.ReadAll(res.Body)
 }
 
-func (this *HttpService) SendRequest(verb string, endpoint string, target interface{}) error {
-	url := this.ServiceUrl + "/" + endpoint
+func (httpService *HttpService) SendRequest(verb string, endpoint string, target interface{}) error {
+	url := httpService.ServiceUrl + "/" + endpoint
 
-	currentUser, err := this.getUserToken()
+	currentUser, err := httpService.getUserToken()
 	if err != nil {
 		log.Fatal(err)
 	}
@@ -134,10 +150,7 @@ func (this *HttpService) SendRequest(verb string, endpoint string, target interf
 
 	req.Header.Set("Authorization", "Bearer "+currentUser.Token)
 
-	//    dump, err := httputil.DumpRequestOut(req, true)
-	// fmt.Printf("%q", dump)
 	if err != nil {
-		// fmt.Printf("error getting user token\n")
 		log.Fatal(err)
 	}
 
@@ -149,8 +162,6 @@ func (this *HttpService) SendRequest(verb string, endpoint string, target interf
 
 	defer res.Body.Close()
 
-	// dumpr, err := httputil.DumpResponse(res, true)
-	// fmt.Printf("%q", dumpr)
 	if err != nil {
 		log.Fatal(err)
 	}
@@ -166,32 +177,17 @@ func (this *HttpService) SendRequest(verb string, endpoint string, target interf
 	return err
 }
 
-func (this *HttpService) getUserToken() (*AuthUser, error) {
-
-	// authBody := &AuthBody{
-	// 	this.AuthKey,
-	// }
-
-	// b, err := json.Marshal(authBody)
-	// if err !=nil {
-	// 	log.Println("Error Marshaling")
-	// 	log.Fatal(err)
-	// }
-
-	authstring := basicAuth(this.Username, this.Password)
-	serviceUrl := this.ServiceUrl + "/auth?access_token=" + this.AuthKey
+func (httpService *HttpService) getUserToken() (*AuthUser, error) {
+	authstring := basicAuth(httpService.Username, httpService.Password)
+	serviceUrl := httpService.ServiceUrl + "/auth?access_token=" + httpService.AuthKey
 
 	req, err := http.NewRequest("POST", serviceUrl, nil)
 	req.Header.Set("Authorization", "Basic "+authstring)
 	req.Header.Set("Content-Type", "application/json")
 
-	//    dump, err := httputil.DumpRequestOut(req, true)
 	if err != nil {
-		// fmt.Printf("error getting user token\n")
 		log.Fatal(err)
 	}
-
-	// fmt.Printf("%q\n\n", dump)
 
 	client := &http.Client{}
 	res, err := client.Do(req)
@@ -201,20 +197,16 @@ func (this *HttpService) getUserToken() (*AuthUser, error) {
 	}
 
 	defer res.Body.Close()
-
 	if res.StatusCode != 201 {
 		err = errors.New("Unable to get user token: Status Code - " + strconv.Itoa(res.StatusCode))
 		return nil, err
 	}
 
-	//    dumpr, err := httputil.DumpResponse(res, true)
-	// fmt.Printf("%q\n\n", dumpr)
 	if err != nil {
 		log.Fatal(err)
 	}
 
 	authUser := &AuthUser{}
-
 	err = json.NewDecoder(res.Body).Decode(authUser)
 
 	return authUser, err

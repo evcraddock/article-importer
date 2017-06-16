@@ -1,45 +1,47 @@
 package tasks
 
 import (
+	"encoding/json"
 	"fmt"
 	"io/ioutil"
 	"log"
 	"strings"
 	"time"
+
 	"github.com/ericaro/frontmatter"
 )
 
 type Article struct {
-	Id				string			`json:"id"`
-	Title			string			`json:"title"`
-	Url 			string			`json:"url"`
-	Banner			string 			`json:"banner"`
-	PublishDate		time.Time 		`json:"publishDate"`
-	DataSource		string			`json:"dataSource"`
-	Author			string			`json:"author"`
-	Categories		[]string		`json:"categories"`
-	Tags			[]string 		`json:"tags"`
-	Content			string 			`json:"content"`
+	Id          string    `json:"id"`
+	Title       string    `json:"title"`
+	Url         string    `json:"url"`
+	Banner      string    `json:"banner"`
+	PublishDate time.Time `json:"publishDate"`
+	DataSource  string    `json:"dataSource"`
+	Author      string    `json:"author"`
+	Categories  []string  `json:"categories"`
+	Tags        []string  `json:"tags"`
+	Content     string    `json:"content"`
 }
 
 type ImportArticle struct {
-	Id				string			`yaml:"id"`
-	Title			string			`yaml:"title"`
-	Url 			string			`yaml:"url"`
-	Banner			string 			`yaml:"banner"`
-	PublishDate		string  		`yaml:"publishDate"`
-	DataSource		string			`yaml:"dataSource"`
-	Author			string			`yaml:"author"`
-	Categories		string			`yaml:"categories"`
-	Tags			string 			`yaml:"tags"`
-	Content			string 			`fm:"content" yaml:"-"`
+	Id          string `yaml:"id"`
+	Title       string `yaml:"title"`
+	Url         string `yaml:"url"`
+	Banner      string `yaml:"banner"`
+	PublishDate string `yaml:"publishDate"`
+	DataSource  string `yaml:"dataSource"`
+	Author      string `yaml:"author"`
+	Categories  string `yaml:"categories"`
+	Tags        string `yaml:"tags"`
+	Content     string `fm:"content" yaml:"-"`
 }
 
 func (this *Task) saveMarkdownFile(article Article) error {
 
 	filelocation := this.articleLocation + article.DataSource
 	fmt.Printf("Saving Markdown file to %s\n", filelocation)
-	
+
 	var importfile *ImportArticle = &ImportArticle{
 		article.Id,
 		article.Title,
@@ -55,7 +57,7 @@ func (this *Task) saveMarkdownFile(article Article) error {
 
 	data, err := frontmatter.Marshal(importfile)
 	if err != nil {
-	    fmt.Printf("err! %s", err.Error())
+		fmt.Printf("err! %s", err.Error())
 	}
 
 	err = ioutil.WriteFile(filelocation, data, 0644)
@@ -96,7 +98,24 @@ func (this *Task) SaveArticle(article *Article, bypassquestions bool) (*Article,
 	}
 
 	if article.Banner == "" || bypassquestions == false {
-		article.Banner = AskForStringValue("Banner Url", article.Banner, false)
+		for {
+			imageFilePath := AskForStringValue("Banner Url", article.Banner, false)
+
+			if imageFilePath != "" {
+				b, err := this.service.Upload("images", imageFilePath)
+
+				if err != nil {
+					fmt.Printf("Could not save images, please try again.\n")
+					continue
+				}
+
+				img := &Image{}
+				json.Unmarshal(b, img)
+				article.Banner = this.service.ServiceUrl + "/images/" + img.Id
+			}
+
+			break
+		}
 	}
 
 	if article.DataSource == "" || bypassquestions == false {
@@ -114,7 +133,7 @@ func (this *Task) SaveArticle(article *Article, bypassquestions bool) (*Article,
 	if bypassquestions == false {
 		article.Tags = AskForCsv("Tags (csv)", article.Tags)
 	}
-	
+
 	requestMethod := "POST"
 	requestUrl := "articles"
 
@@ -131,7 +150,7 @@ func (this *Task) SaveArticle(article *Article, bypassquestions bool) (*Article,
 }
 
 func (this *Task) UpdateArticle(bypassQuestions bool) (*Article, error) {
-	
+
 	article, err := this.GetArticle()
 
 	if err != nil {
@@ -142,15 +161,14 @@ func (this *Task) UpdateArticle(bypassQuestions bool) (*Article, error) {
 }
 
 func (this *Task) LoadArticle(bypassQuestions bool) (*Article, error) {
-	fileName := AskForStringValue("Import File location", "", false)	
-
+	fileName := AskForStringValue("Import File location", "", false)
 	var article *Article = &Article{
-		Title: "",
+		Title:       "",
 		PublishDate: time.Now(),
-		Url: "",
-		Banner: "/images/articles/bronco_stadium.jpg",
-		DataSource: "",
-		Author: "",
+		Url:         "",
+		Banner:      "",
+		DataSource:  "",
+		Author:      "",
 	}
 
 	importfilename := this.articleLocation + fileName
@@ -162,8 +180,8 @@ func (this *Task) LoadArticle(bypassQuestions bool) (*Article, error) {
 	importfile := new(ImportArticle)
 	err = frontmatter.Unmarshal(artfile, importfile)
 	if err != nil {
-	    fmt.Printf("Error unmarshaling yaml file: %s", err.Error())
-	    return this.SaveArticle(article, false)
+		fmt.Printf("Error unmarshaling yaml file: %s", err.Error())
+		return this.SaveArticle(article, false)
 	}
 
 	if importfile.Id != "" {
@@ -200,7 +218,6 @@ func (this *Task) DeleteArticle() (string, error) {
 	if this.service.Password == "" {
 		this.service.Password = AskForStringValue("Password", "", true)
 	}
-
 
 	if this.service.ServiceUrl == "" {
 		this.service.ServiceUrl = AskForStringValue("Service Url", "", true)

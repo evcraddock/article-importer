@@ -8,14 +8,15 @@ import (
 	"os"
 	"strings"
 	"time"
+	"unicode"
 
 	"github.com/evcraddock/article-importer/config"
 	"github.com/evcraddock/article-importer/service"
 )
 
 type Task struct {
-	service 			*service.HttpService
-	articleLocation		string
+	service         *service.HttpService
+	articleLocation string
 }
 
 func NewTask(settings *config.Settings) *Task {
@@ -66,12 +67,12 @@ func AskForStringValue(label string, defaultValue string, required bool) string 
 }
 
 func AskForCsv(label string, defaultValue []string) []string {
-	csvstring := strings.Join(defaultValue, ", ")
+	csvstring := removeWhiteSpace(strings.Join(defaultValue, ", "))
 
 	newcsv := AskForStringValue(label, csvstring, false)
 
 	r := csv.NewReader(strings.NewReader(newcsv))
-	stringArray, _ := r.Read()	
+	stringArray, _ := r.Read()
 	return stringArray
 }
 
@@ -105,4 +106,13 @@ func AskForDateValue(label string, defaultValue time.Time) time.Time {
 func getStringArray(value string) ([]string, error) {
 	r := csv.NewReader(strings.NewReader(value))
 	return r.Read()
+}
+
+func removeWhiteSpace(str string) string {
+	return strings.Map(func(r rune) rune {
+		if unicode.IsSpace(r) {
+			return -1
+		}
+		return r
+	}, str)
 }
