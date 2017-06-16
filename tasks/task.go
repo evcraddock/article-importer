@@ -14,13 +14,15 @@ import (
 	"github.com/evcraddock/article-importer/service"
 )
 
+//Task stores task information
 type Task struct {
-	service         *service.HttpService
+	service         *service.HTTPService
 	articleLocation string
 }
 
+//NewTask creates new instance of a Task
 func NewTask(settings *config.Settings) *Task {
-	service := service.NewHttpService(settings.Auth)
+	service := service.NewHTTPService(settings.Auth)
 
 	task := &Task{
 		service,
@@ -30,6 +32,7 @@ func NewTask(settings *config.Settings) *Task {
 	return task
 }
 
+//AskForStringValue prompts user for a string value
 func AskForStringValue(label string, defaultValue string, required bool) string {
 	reader := bufio.NewReader(os.Stdin)
 
@@ -66,7 +69,8 @@ func AskForStringValue(label string, defaultValue string, required bool) string 
 	}
 }
 
-func AskForCsv(label string, defaultValue []string) []string {
+//AskForCSV prompts user for value seperated by commas
+func AskForCSV(label string, defaultValue []string) []string {
 	csvstring := removeWhiteSpace(strings.Join(defaultValue, ", "))
 
 	newcsv := AskForStringValue(label, csvstring, false)
@@ -76,6 +80,7 @@ func AskForCsv(label string, defaultValue []string) []string {
 	return stringArray
 }
 
+//AskForDateValue prompts user for a date
 func AskForDateValue(label string, defaultValue time.Time) time.Time {
 	reader := bufio.NewReader(os.Stdin)
 	dateValue := defaultValue

@@ -4,78 +4,81 @@ import (
 	"log"
 )
 
+//Link stores link information
 type Link struct {
-	Id				string			`json:"id"`
-	Title 			string			`json:"title"`
-	LinkTitle		string			`json:"linkTitle"`
-	Url 			string			`json:"url"`
-	Banner			string 			`json:"banner"`
-	Categories		[]string		`json:"categories"`
-	Tags			[]string 		`json:"tags"`
+	ID         string   `json:"id"`
+	Title      string   `json:"title"`
+	LinkTitle  string   `json:"linkTitle"`
+	URL        string   `json:"url"`
+	Banner     string   `json:"banner"`
+	Categories []string `json:"categories"`
+	Tags       []string `json:"tags"`
 }
 
-func (this *Task) saveLink(link *Link) (*Link, error) {
-	if this.service.Username == "" {
-		this.service.Username = AskForStringValue("Username", "", true)
+func (linkTask *Task) saveLink(link *Link) (*Link, error) {
+	if linkTask.service.Username == "" {
+		linkTask.service.Username = AskForStringValue("Username", "", true)
 	}
 
-	if this.service.Password == "" {
-		this.service.Password = AskForStringValue("Password", "", true)
+	if linkTask.service.Password == "" {
+		linkTask.service.Password = AskForStringValue("Password", "", true)
 	}
 
-	if this.service.ServiceUrl == "" {
-		this.service.ServiceUrl = AskForStringValue("Service Url", "", true)
+	if linkTask.service.ServiceURL == "" {
+		linkTask.service.ServiceURL = AskForStringValue("Service Url", "", true)
 	}
 
-	if this.service.AuthKey == "" {
+	if linkTask.service.AuthKey == "" {
 		log.Fatal("AuthKey environment variable must be set.")
 	}
 
 	link.Title = AskForStringValue("Title", link.Title, true)
 	link.LinkTitle = AskForStringValue("Link Title", link.LinkTitle, true)
-	link.Url = AskForStringValue("Permalink", link.Url, true)
+	link.URL = AskForStringValue("Permalink", link.URL, true)
 	link.Banner = AskForStringValue("Banner Url", link.Banner, false)
-	link.Categories = AskForCsv("Categories (csv)", link.Categories)
-	link.Tags = AskForCsv("Tags (csv)", link.Tags)
-	
-	requestMethod := "POST"
-	requestUrl := "links"
+	link.Categories = AskForCSV("Categories (csv)", link.Categories)
+	link.Tags = AskForCSV("Tags (csv)", link.Tags)
 
-	err := this.service.SendRequest(requestMethod, requestUrl, link)
+	requestMethod := "POST"
+	requestURL := "links"
+
+	err := linkTask.service.SendRequest(requestMethod, requestURL, link)
 
 	return link, err
 }
 
-func (this *Task) CreateNewLink() (*Link, error) {
-	var link *Link = &Link{
-		Title: "",
+//CreateNewLink creates new Link
+func (linkTask *Task) CreateNewLink() (*Link, error) {
+	var link = &Link{
+		Title:     "",
 		LinkTitle: "",
-		Url: "",
-		Banner: "",
+		URL:       "",
+		Banner:    "",
 	}
 
-	return this.saveLink(link)
+	return linkTask.saveLink(link)
 }
 
-func (this *Task) DeleteLink() (string, error) {
+//DeleteLink deletes a specific link
+func (linkTask *Task) DeleteLink() (string, error) {
 	id := AskForStringValue("Link Id", "", true)
-	if this.service.Username == "" {
-		this.service.Username = AskForStringValue("Username", "", true)
+	if linkTask.service.Username == "" {
+		linkTask.service.Username = AskForStringValue("Username", "", true)
 	}
 
-	if this.service.Password == "" {
-		this.service.Password = AskForStringValue("Password", "", true)
+	if linkTask.service.Password == "" {
+		linkTask.service.Password = AskForStringValue("Password", "", true)
 	}
 
-	if this.service.ServiceUrl == "" {
-		this.service.ServiceUrl = AskForStringValue("Service Url", "", true)
+	if linkTask.service.ServiceURL == "" {
+		linkTask.service.ServiceURL = AskForStringValue("Service Url", "", true)
 	}
 
-	if this.service.AuthKey == "" {
+	if linkTask.service.AuthKey == "" {
 		log.Fatal("AuthKey environment variable must be set.")
 	}
 
-	requestUrl := "links/" + id
+	requestURL := "links/" + id
 
-	return id, this.service.SendRequest("DELETE", requestUrl, nil)
+	return id, linkTask.service.SendRequest("DELETE", requestURL, nil)
 }

@@ -1,7 +1,8 @@
 package tasks
 
+//Image stores image data
 type Image struct {
-	Id          string `json:"_id"`
+	ID          string `json:"_id"`
 	FileName    string `json:"filename"`
 	ContentType string `json:"contentType"`
 }

@@ -10,9 +10,7 @@ import (
 )
 
 func main() {
-
 	configSettings := config.NewConfiguration()
-
 	app := cli.NewApp()
 	app.Name = "Article Importer"
 	app.Version = "1.0"
@@ -38,34 +36,13 @@ func main() {
 		},
 		cli.StringFlag{
 			Name:        "serviceUrl",
-			Value:       configSettings.Auth.ServiceUrl,
+			Value:       configSettings.Auth.ServiceURL,
 			Usage:       "",
-			Destination: &configSettings.Auth.ServiceUrl,
+			Destination: &configSettings.Auth.ServiceURL,
 		},
 	}
 
 	app.Commands = []cli.Command{
-		{
-			Name:  "load-testarticle",
-			Usage: "load article from yaml file",
-			Flags: []cli.Flag{
-				cli.BoolFlag{Name: "force, f"},
-			},
-			Action: func(c *cli.Context) error {
-				configSettings.Auth.UserName = "test@craddock.org"
-				configSettings.Auth.Password = "password"
-
-				task := tasks.NewTask(configSettings)
-				// article, err := task.LoadArticle(c.Bool("force"))
-				article, err := task.LoadArticle(true)
-				if err != nil {
-					return cli.NewExitError(err.Error(), 86)
-				}
-
-				fmt.Printf("Successfull Loaded Article %s (Id: %s) on %v\n", article.Title, article.Id, article.PublishDate)
-				return nil
-			},
-		},
 		{
 			Name:  "load-article",
 			Usage: "load article from yaml file",
@@ -79,7 +56,7 @@ func main() {
 					return cli.NewExitError(err.Error(), 86)
 				}
 
-				fmt.Printf("Successfull Loaded Article %s (Id: %s) on %v\n", article.Title, article.Id, article.PublishDate)
+				fmt.Printf("Successfull Loaded Article %s (Id: %s) on %v\n", article.Title, article.ID, article.PublishDate)
 				return nil
 			},
 		},
@@ -105,12 +82,12 @@ func main() {
 			Usage: "delete an existing article",
 			Action: func(c *cli.Context) error {
 				task := tasks.NewTask(configSettings)
-				articleId, err := task.DeleteArticle()
+				articleID, err := task.DeleteArticle()
 				if err != nil {
 					return cli.NewExitError(err.Error(), 86)
 				}
 
-				fmt.Printf("Successfull Deleted Article %s \n", articleId)
+				fmt.Printf("Successfull Deleted Article %s \n", articleID)
 				return nil
 			},
 		},
@@ -133,12 +110,12 @@ func main() {
 			Usage: "delete an existing link",
 			Action: func(c *cli.Context) error {
 				task := tasks.NewTask(configSettings)
-				linkId, err := task.DeleteLink()
+				linkID, err := task.DeleteLink()
 				if err != nil {
 					return cli.NewExitError(err.Error(), 86)
 				}
 
-				fmt.Printf("Successfull Deleted link %s \n", linkId)
+				fmt.Printf("Successfull Deleted link %s \n", linkID)
 				return nil
 			},
 		},

@@ -17,32 +17,37 @@ import (
 	"github.com/evcraddock/article-importer/config"
 )
 
-type HttpService struct {
-	ServiceUrl string
+//HTTPService information about an http service
+type HTTPService struct {
+	ServiceURL string
 	AuthKey    string
 	Username   string
 	Password   string
 }
 
+//AuthBody authorization body information
 type AuthBody struct {
-	access_token string
+	accessToken string
 }
 
+//User user object
 type User struct {
-	Id      string `json:"id"`
+	ID      string `json:"id"`
 	Name    string `json:"name"`
 	Picture string `json:"picture"`
 	Email   string `json:"email"`
 }
 
+//AuthUser authorization user
 type AuthUser struct {
 	Token string `json:"token"`
 	User  User   `json:"user"`
 }
 
-func NewHttpService(settings config.Authorization) *HttpService {
-	svc := &HttpService{
-		settings.ServiceUrl,
+//NewHTTPService creates a new HTTPService
+func NewHTTPService(settings config.Authorization) *HTTPService {
+	svc := &HTTPService{
+		settings.ServiceURL,
 		settings.AuthKey,
 		settings.UserName,
 		settings.Password,
@@ -51,8 +56,9 @@ func NewHttpService(settings config.Authorization) *HttpService {
 	return svc
 }
 
-func (httpService *HttpService) GetJson(endpoint string, id string, target interface{}) error {
-	url := httpService.ServiceUrl + "/" + endpoint + "/" + id
+//Get returns a json payload
+func (httpService *HTTPService) Get(endpoint string, id string, target interface{}) error {
+	url := httpService.ServiceURL + "/" + endpoint + "/" + id
 
 	r, err := http.Get(url)
 	if err != nil {
@@ -63,8 +69,9 @@ func (httpService *HttpService) GetJson(endpoint string, id string, target inter
 	return json.NewDecoder(r.Body).Decode(target)
 }
 
-func (httpService *HttpService) Upload(endpoint, filename string) ([]byte, error) {
-	url := httpService.ServiceUrl + "/" + endpoint
+//Upload uploads and image to a service
+func (httpService *HTTPService) Upload(endpoint, filename string) ([]byte, error) {
+	url := httpService.ServiceURL + "/" + endpoint
 
 	var buffer bytes.Buffer
 	writer := multipart.NewWriter(&buffer)
@@ -126,8 +133,9 @@ func (httpService *HttpService) Upload(endpoint, filename string) ([]byte, error
 	return ioutil.ReadAll(res.Body)
 }
 
-func (httpService *HttpService) SendRequest(verb string, endpoint string, target interface{}) error {
-	url := httpService.ServiceUrl + "/" + endpoint
+//SendRequest sends an http request
+func (httpService *HTTPService) SendRequest(verb string, endpoint string, target interface{}) error {
+	url := httpService.ServiceURL + "/" + endpoint
 
 	currentUser, err := httpService.getUserToken()
 	if err != nil {
@@ -177,11 +185,11 @@ func (httpService *HttpService) SendRequest(verb string, endpoint string, target
 	return err
 }
 
-func (httpService *HttpService) getUserToken() (*AuthUser, error) {
+func (httpService *HTTPService) getUserToken() (*AuthUser, error) {
 	authstring := basicAuth(httpService.Username, httpService.Password)
-	serviceUrl := httpService.ServiceUrl + "/auth?access_token=" + httpService.AuthKey
+	serviceURL := httpService.ServiceURL + "/auth?access_token=" + httpService.AuthKey
 
-	req, err := http.NewRequest("POST", serviceUrl, nil)
+	req, err := http.NewRequest("POST", serviceURL, nil)
 	req.Header.Set("Authorization", "Basic "+authstring)
 	req.Header.Set("Content-Type", "application/json")
 
