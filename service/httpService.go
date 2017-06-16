@@ -14,6 +14,8 @@ import (
 	"os"
 	"strconv"
 
+	"net/url"
+
 	"github.com/evcraddock/article-importer/config"
 )
 
@@ -58,15 +60,30 @@ func NewHTTPService(settings config.Authorization) *HTTPService {
 
 //Get returns a json payload
 func (httpService *HTTPService) Get(endpoint string, id string, target interface{}) error {
-	url := httpService.ServiceURL + "/" + endpoint + "/" + id
+	serviceURL := httpService.ServiceURL + "/" + endpoint + "/" + id
 
-	r, err := http.Get(url)
+	r, err := http.Get(serviceURL)
 	if err != nil {
 		return err
 	}
 
 	defer r.Body.Close()
 	return json.NewDecoder(r.Body).Decode(target)
+}
+
+//ResolveLink checks the status of a link
+func (httpService *HTTPService) ResolveLink(link string) bool {
+	_, err := url.Parse(link)
+	if err != nil {
+		return false
+	}
+
+	r, err := http.Get(link)
+	if err != nil {
+		return false
+	}
+
+	return r.StatusCode == http.StatusOK
 }
 
 //Upload uploads and image to a service

@@ -104,6 +104,11 @@ func (articleTask *Task) SaveArticle(article *Article, bypassquestions bool) (*A
 		for {
 			imageFilePath := AskForStringValue("Banner Url", article.Banner, false)
 
+			if articleTask.service.ResolveLink(imageFilePath) {
+				article.Banner = imageFilePath
+				break
+			}
+
 			if imageFilePath != "" {
 				b, err := articleTask.service.Upload("images", imageFilePath)
 
@@ -146,6 +151,12 @@ func (articleTask *Task) SaveArticle(article *Article, bypassquestions bool) (*A
 	}
 
 	err := articleTask.service.SendRequest(requestMethod, requestURL, article)
+
+	if err != nil {
+		fmt.Printf("Unable to Save File, %s \n", err.Error())
+		return article, err
+	}
+
 	articleTask.saveMarkdownFile(*article)
 
 	return article, err
