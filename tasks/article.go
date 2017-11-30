@@ -1,7 +1,6 @@
 package tasks
 
 import (
-	"encoding/json"
 	"fmt"
 	"io/ioutil"
 	"log"
@@ -13,9 +12,10 @@ import (
 
 //Article represents article information
 type Article struct {
-	ID          string    `json:"id"`
+	ID          string    `json:"id" `
 	Title       string    `json:"title"`
 	URL         string    `json:"url"`
+	Images      []string  `json:"images"`
 	Banner      string    `json:"banner"`
 	PublishDate time.Time `json:"publishDate"`
 	DataSource  string    `json:"dataSource"`
@@ -27,16 +27,17 @@ type Article struct {
 
 //ImportArticle represents and article that can be marshalled to yaml
 type ImportArticle struct {
-	ID          string `yaml:"id"`
-	Title       string `yaml:"title"`
-	URL         string `yaml:"url"`
-	Banner      string `yaml:"banner"`
-	PublishDate string `yaml:"publishDate"`
-	DataSource  string `yaml:"dataSource"`
-	Author      string `yaml:"author"`
-	Categories  string `yaml:"categories"`
-	Tags        string `yaml:"tags"`
-	Content     string `fm:"content" yaml:"-"`
+	ID          string   `yaml:"id"`
+	Title       string   `yaml:"title"`
+	URL         string   `yaml:"url"`
+	Images      []string `yaml:"images"`
+	Banner      string   `yaml:"banner"`
+	PublishDate string   `yaml:"publishDate"`
+	DataSource  string   `yaml:"dataSource"`
+	Author      string   `yaml:"author"`
+	Categories  string   `yaml:"categories"`
+	Tags        string   `yaml:"tags"`
+	Content     string   `fm:"content" yaml:"-"`
 }
 
 func (articleTask *Task) saveMarkdownFile(article Article) error {
@@ -48,6 +49,7 @@ func (articleTask *Task) saveMarkdownFile(article Article) error {
 		article.ID,
 		article.Title,
 		article.URL,
+		article.Images,
 		article.Banner,
 		article.PublishDate.Format("01/02/2006"),
 		article.DataSource,
@@ -76,6 +78,7 @@ func (articleTask *Task) SaveArticle(article *Article, bypassquestions bool) (*A
 		articleTask.service.Username = AskForStringValue("Username", "", true)
 	}
 
+	//TODO: obfuscate the password on the screen
 	if articleTask.service.Password == "" {
 		articleTask.service.Password = AskForStringValue("Password", "", true)
 	}
@@ -101,29 +104,7 @@ func (articleTask *Task) SaveArticle(article *Article, bypassquestions bool) (*A
 	}
 
 	if article.Banner == "" || bypassquestions == false {
-		for {
-			imageFilePath := AskForStringValue("Banner Url", article.Banner, false)
-
-			if articleTask.service.ResolveLink(imageFilePath) {
-				article.Banner = imageFilePath
-				break
-			}
-
-			if imageFilePath != "" {
-				b, err := articleTask.service.Upload("images", imageFilePath)
-
-				if err != nil {
-					fmt.Printf("Could not save images, please try again.\n")
-					continue
-				}
-
-				img := &Image{}
-				json.Unmarshal(b, img)
-				article.Banner = articleTask.service.ServiceURL + "/images/" + img.ID
-			}
-
-			break
-		}
+		article.Banner = AskForStringValue("Banner Image FileName", "", false)
 	}
 
 	if article.DataSource == "" || bypassquestions == false {
@@ -157,6 +138,35 @@ func (articleTask *Task) SaveArticle(article *Article, bypassquestions bool) (*A
 		return article, err
 	}
 
+	// TODO: Loop through article.Images
+	// TODO: call service.Upload images
+
+	// if article.Banner == "" || bypassquestions == false {
+	// 	for {
+	// 		imageFilePath := AskForStringValue("Banner Url", article.Banner, false)
+
+	// 		if articleTask.service.ResolveLink(imageFilePath) {
+	// 			article.Banner = imageFilePath
+	// 			break
+	// 		}
+
+	// 		if imageFilePath != "" {
+	// 			b, err := articleTask.service.Upload("images", imageFilePath)
+
+	// 			if err != nil {
+	// 				fmt.Printf("Could not save images, please try again.\n")
+	// 				continue
+	// 			}
+
+	// 			img := &Image{}
+	// 			json.Unmarshal(b, img)
+	// 			article.Banner = articleTask.service.ServiceURL + "/images/" + img.ID
+	// 		}
+
+	// 		break
+	// 	}
+	// }
+
 	articleTask.saveMarkdownFile(*article)
 
 	return article, err
@@ -188,6 +198,8 @@ func (articleTask *Task) LoadArticle(bypassQuestions bool) (*Article, error) {
 
 	importfilename := articleTask.articleLocation + fileName
 	artfile, err := ioutil.ReadFile(importfilename)
+
+	//TODO: return error message
 	if err != nil {
 		return articleTask.SaveArticle(article, false)
 	}

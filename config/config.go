@@ -22,7 +22,7 @@ type Authorization struct {
 func NewConfiguration() *Settings {
 	serviceURL := getEnvironmentVariable("Article_Service_Url", "http://localhost:9000")
 	authKey := getEnvironmentVariable("Ariticle_Server_AuthKey", "VIrPcAi4Rff0gBwdWklRl3ywMwgC6mZH")
-	articleLocation := getEnvironmentVariable("Article_Location", "articles/")
+	articleLocation := getEnvironmentVariable("Article_Location", "~/articles/")
 
 	authSettings := &Authorization{
 		authKey,
