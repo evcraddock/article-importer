@@ -7,11 +7,13 @@ import (
 	"log"
 	"os"
 	"strings"
+	"syscall"
 	"time"
 	"unicode"
 
 	"github.com/evcraddock/article-importer/config"
 	"github.com/evcraddock/article-importer/service"
+	"golang.org/x/crypto/ssh/terminal"
 )
 
 //Task stores task information
@@ -66,6 +68,32 @@ func AskForStringValue(label string, defaultValue string, required bool) string 
 		}
 
 		return value
+	}
+}
+
+//AskForHiddenStringValue prompts the user for a value which should not be displayed on the screen
+func AskForHiddenStringValue(label string, defaultValue string, required bool) string {
+	for {
+		labelValue := label
+		if defaultValue != "" {
+			labelValue = label + " { ******** }"
+		}
+
+		if required {
+			requiredtext := "*"
+			labelValue = labelValue + " " + requiredtext
+		}
+
+		fmt.Printf("%s : ", labelValue)
+		byteHidden, err := terminal.ReadPassword(int(syscall.Stdin))
+		fmt.Printf("\n")
+
+		if err != nil {
+			log.Fatal(err)
+		}
+
+		hiddentext := string(byteHidden)
+		return hiddentext
 	}
 }
 

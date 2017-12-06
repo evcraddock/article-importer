@@ -196,7 +196,7 @@ func (httpService *HTTPService) SendRequest(verb string, endpoint string, target
 	}
 
 	if err != nil {
-		fmt.Printf("Error sending request: %s", err.Error())
+		fmt.Printf("Error sending request: %s /n", err.Error())
 	}
 
 	return err

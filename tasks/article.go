@@ -40,36 +40,100 @@ type ImportArticle struct {
 	Content     string   `fm:"content" yaml:"-"`
 }
 
-func (articleTask *Task) saveMarkdownFile(article Article) error {
-
-	filelocation := articleTask.articleLocation + article.DataSource
-	fmt.Printf("Saving Markdown file to %s\n", filelocation)
-
-	var importfile = &ImportArticle{
-		article.ID,
-		article.Title,
-		article.URL,
-		article.Images,
-		article.Banner,
-		article.PublishDate.Format("01/02/2006"),
-		article.DataSource,
-		article.Author,
-		strings.Join(article.Categories, ", "),
-		strings.Join(article.Tags, ", "),
-		article.Content,
+//DeleteArticle deletes the specified article
+func (articleTask *Task) DeleteArticle() (string, error) {
+	id := AskForStringValue("Article Id", "", true)
+	if articleTask.service.Username == "" {
+		articleTask.service.Username = AskForStringValue("Username", "", true)
 	}
 
-	data, err := frontmatter.Marshal(importfile)
+	if articleTask.service.Password == "" {
+		articleTask.service.Password = AskForStringValue("Password", "", true)
+	}
+
+	if articleTask.service.ServiceURL == "" {
+		articleTask.service.ServiceURL = AskForStringValue("Service Url", "", true)
+	}
+
+	if articleTask.service.AuthKey == "" {
+		log.Fatal("AuthKey environment variable must be set.")
+	}
+
+	requestURL := "articles/" + id
+
+	return id, articleTask.service.SendRequest("DELETE", requestURL, nil)
+}
+
+//GetArticle gets an article by datasource
+func (articleTask *Task) GetArticle(id string) (*Article, error) {
+	if id == "" {
+		id = AskForStringValue("Article Id", "", true)
+	}
+
+	var article = &Article{}
+	err := articleTask.service.Get("articles", id, article)
+
 	if err != nil {
-		fmt.Printf("err! %s", err.Error())
+		return article, err
 	}
 
-	err = ioutil.WriteFile(filelocation, data, 0644)
+	return article, err
+}
+
+//LoadArticle loads an existing article
+func (articleTask *Task) LoadArticle(bypassQuestions bool, fileName string) (*Article, error) {
+	if fileName == "" {
+		fileName = AskForStringValue("Import File location", "", false)
+		// fileName = "2017-02-05-how-to-beat-burnout.md"
+	}
+
+	var article = &Article{
+		Title:       "",
+		PublishDate: time.Now(),
+		URL:         "",
+		Banner:      "",
+		DataSource:  "",
+		Author:      "",
+	}
+
+	importfilename := articleTask.articleLocation + fileName
+	artfile, err := ioutil.ReadFile(importfilename)
+
+	if err != nil || len(artfile) == 0 {
+		return nil, fmt.Errorf("Could not open file")
+	}
+
+	importfile := new(ImportArticle)
+	err = frontmatter.Unmarshal(artfile, importfile)
 	if err != nil {
-		log.Fatal(err)
+		msg := fmt.Errorf("Error unmarshaling yaml file: %s", err.Error())
+		return nil, msg
 	}
 
-	return err
+	if importfile.ID != "" {
+		article.ID = importfile.ID
+	}
+
+	importPublishDate, err := time.Parse("01/02/2006", importfile.PublishDate)
+	if err == nil {
+		article.PublishDate = importPublishDate
+	}
+
+	article.Title = importfile.Title
+	article.URL = importfile.URL
+	article.Author = importfile.Author
+
+	if importfile.Banner != "" {
+		article.Banner = importfile.Banner
+	}
+
+	article.DataSource = fileName
+	article.Categories, _ = getStringArray(importfile.Categories)
+	article.Tags, _ = getStringArray(importfile.Tags)
+	article.Images = importfile.Images
+	article.Content = importfile.Content
+
+	return articleTask.SaveArticle(article, bypassQuestions)
 }
 
 //SaveArticle saves input data as an article and backups to a local md file
@@ -78,9 +142,8 @@ func (articleTask *Task) SaveArticle(article *Article, bypassquestions bool) (*A
 		articleTask.service.Username = AskForStringValue("Username", "", true)
 	}
 
-	//TODO: obfuscate the password on the screen
 	if articleTask.service.Password == "" {
-		articleTask.service.Password = AskForStringValue("Password", "", true)
+		articleTask.service.Password = AskForHiddenStringValue("Password", "", true)
 	}
 
 	if articleTask.service.ServiceURL == "" {
@@ -127,8 +190,15 @@ func (articleTask *Task) SaveArticle(article *Article, bypassquestions bool) (*A
 	requestURL := "articles"
 
 	if article.ID != "" {
+
 		requestMethod = "PUT"
 		requestURL = "articles/" + article.ID
+		_, err := articleTask.GetArticle(article.ID)
+
+		if err != nil {
+			fmt.Printf("Article Could not be found \n")
+			return article, err
+		}
 	}
 
 	err := articleTask.service.SendRequest(requestMethod, requestURL, article)
@@ -138,34 +208,15 @@ func (articleTask *Task) SaveArticle(article *Article, bypassquestions bool) (*A
 		return article, err
 	}
 
-	// TODO: Loop through article.Images
-	// TODO: call service.Upload images
+	imageEndPoint := fmt.Sprintf("images/%v", article.ID)
 
-	// if article.Banner == "" || bypassquestions == false {
-	// 	for {
-	// 		imageFilePath := AskForStringValue("Banner Url", article.Banner, false)
-
-	// 		if articleTask.service.ResolveLink(imageFilePath) {
-	// 			article.Banner = imageFilePath
-	// 			break
-	// 		}
-
-	// 		if imageFilePath != "" {
-	// 			b, err := articleTask.service.Upload("images", imageFilePath)
-
-	// 			if err != nil {
-	// 				fmt.Printf("Could not save images, please try again.\n")
-	// 				continue
-	// 			}
-
-	// 			img := &Image{}
-	// 			json.Unmarshal(b, img)
-	// 			article.Banner = articleTask.service.ServiceURL + "/images/" + img.ID
-	// 		}
-
-	// 		break
-	// 	}
-	// }
+	for _, imageFilePath := range article.Images {
+		_, err := articleTask.service.Upload(imageEndPoint, imageFilePath)
+		if err != nil {
+			fmt.Printf("Could not save images, please try again. %v \n", err.Error())
+			continue
+		}
+	}
 
 	articleTask.saveMarkdownFile(*article)
 
@@ -175,7 +226,7 @@ func (articleTask *Task) SaveArticle(article *Article, bypassquestions bool) (*A
 //UpdateArticle updates and existing article
 func (articleTask *Task) UpdateArticle(bypassQuestions bool) (*Article, error) {
 
-	article, err := articleTask.GetArticle()
+	article, err := articleTask.GetArticle("")
 
 	if err != nil {
 		log.Fatal(err)
@@ -184,92 +235,33 @@ func (articleTask *Task) UpdateArticle(bypassQuestions bool) (*Article, error) {
 	return articleTask.SaveArticle(article, bypassQuestions)
 }
 
-//LoadArticle loads an existing article
-func (articleTask *Task) LoadArticle(bypassQuestions bool) (*Article, error) {
-	fileName := AskForStringValue("Import File location", "", false)
-	var article = &Article{
-		Title:       "",
-		PublishDate: time.Now(),
-		URL:         "",
-		Banner:      "",
-		DataSource:  "",
-		Author:      "",
+func (articleTask *Task) saveMarkdownFile(article Article) error {
+	filelocation := articleTask.articleLocation + article.DataSource
+	fmt.Printf("Saving Markdown file to %s\n", filelocation)
+
+	var importfile = &ImportArticle{
+		article.ID,
+		article.Title,
+		article.URL,
+		article.Images,
+		article.Banner,
+		article.PublishDate.Format("01/02/2006"),
+		article.DataSource,
+		article.Author,
+		strings.Join(article.Categories, ","),
+		strings.Join(article.Tags, ","),
+		article.Content,
 	}
 
-	importfilename := articleTask.articleLocation + fileName
-	artfile, err := ioutil.ReadFile(importfilename)
-
-	//TODO: return error message
+	data, err := frontmatter.Marshal(importfile)
 	if err != nil {
-		return articleTask.SaveArticle(article, false)
+		fmt.Printf("err! %s", err.Error())
 	}
 
-	importfile := new(ImportArticle)
-	err = frontmatter.Unmarshal(artfile, importfile)
+	err = ioutil.WriteFile(filelocation, data, 0644)
 	if err != nil {
-		fmt.Printf("Error unmarshaling yaml file: %s", err.Error())
-		return articleTask.SaveArticle(article, false)
+		log.Fatal(err)
 	}
 
-	if importfile.ID != "" {
-		article.ID = importfile.ID
-	}
-
-	importPublishDate, err := time.Parse("01/02/2006", importfile.PublishDate)
-	if err == nil {
-		article.PublishDate = importPublishDate
-	}
-
-	article.Title = importfile.Title
-	article.URL = importfile.URL
-	article.Author = importfile.Author
-
-	if importfile.Banner != "" {
-		article.Banner = importfile.Banner
-	}
-
-	article.DataSource = fileName
-	article.Categories, _ = getStringArray(importfile.Categories)
-	article.Tags, _ = getStringArray(importfile.Tags)
-	article.Content = importfile.Content
-
-	return articleTask.SaveArticle(article, bypassQuestions)
-}
-
-//DeleteArticle deletes the specified article
-func (articleTask *Task) DeleteArticle() (string, error) {
-	id := AskForStringValue("Article Id", "", true)
-	if articleTask.service.Username == "" {
-		articleTask.service.Username = AskForStringValue("Username", "", true)
-	}
-
-	if articleTask.service.Password == "" {
-		articleTask.service.Password = AskForStringValue("Password", "", true)
-	}
-
-	if articleTask.service.ServiceURL == "" {
-		articleTask.service.ServiceURL = AskForStringValue("Service Url", "", true)
-	}
-
-	if articleTask.service.AuthKey == "" {
-		log.Fatal("AuthKey environment variable must be set.")
-	}
-
-	requestURL := "articles/" + id
-
-	return id, articleTask.service.SendRequest("DELETE", requestURL, nil)
-}
-
-//GetArticle gets an article by datasource
-func (articleTask *Task) GetArticle() (*Article, error) {
-	id := AskForStringValue("Article Id", "", true)
-
-	var article = &Article{}
-	err := articleTask.service.Get("articles", id, article)
-
-	if err != nil {
-		return article, err
-	}
-
-	return article, err
+	return err
 }

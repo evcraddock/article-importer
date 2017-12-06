@@ -48,12 +48,13 @@ func main() {
 			Usage: "load article from yaml file",
 			Flags: []cli.Flag{
 				cli.BoolFlag{Name: "force, f"},
+				cli.StringFlag{Name: "filename"},
 			},
 			Action: func(c *cli.Context) error {
 				task := tasks.NewTask(configSettings)
-				article, err := task.LoadArticle(c.Bool("force"))
+				article, err := task.LoadArticle(c.Bool("force"), c.String("filename"))
 				if err != nil {
-					return cli.NewExitError(err.Error(), 86)
+					return cli.NewExitError("Error Message: "+err.Error(), 86)
 				}
 
 				fmt.Printf("Successfull Loaded Article %s (Id: %s) on %v\n", article.Title, article.ID, article.PublishDate)
