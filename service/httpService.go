@@ -11,8 +11,10 @@ import (
 	"log"
 	"mime/multipart"
 	"net/http"
+	"net/textproto"
 	"os"
 	"strconv"
+	"strings"
 
 	"net/url"
 
@@ -90,17 +92,33 @@ func (httpService *HTTPService) ResolveLink(link string) bool {
 func (httpService *HTTPService) Upload(endpoint, filename string) ([]byte, error) {
 	url := httpService.ServiceURL + "/" + endpoint
 
-	var buffer bytes.Buffer
-	writer := multipart.NewWriter(&buffer)
-
 	file, err := os.Open(filename)
 	if err != nil {
 		return nil, err
 	}
 
+	bfile := make([]byte, 512)
+	if err != nil {
+		return nil, err
+	}
+
+	ctype := http.DetectContentType(bfile)
+
+	if ctype == "application/octet-stream" {
+		carr := strings.Split(filename, ".")
+		ctype = "image/" + carr[len(carr)-1]
+	}
+
 	defer file.Close()
 
-	filewriter, err := writer.CreateFormFile("image", filename)
+	buffer := &bytes.Buffer{}
+	writer := multipart.NewWriter(buffer)
+
+	header := make(textproto.MIMEHeader)
+	header.Set("Content-Disposition", fmt.Sprintf(`form-data; name="image"; filename="%s"`, filename))
+	header.Set("Content-Type", ctype)
+
+	filewriter, err := writer.CreatePart(header)
 	if err != nil {
 		return nil, err
 	}
@@ -110,23 +128,14 @@ func (httpService *HTTPService) Upload(endpoint, filename string) ([]byte, error
 		return nil, err
 	}
 
-	filewriter, err = writer.CreateFormField("key")
-	if err != nil {
-		return nil, err
-	}
-
-	_, err = filewriter.Write([]byte("KEY"))
-	if err != nil {
-		return nil, err
-	}
-
 	writer.Close()
-	req, err := http.NewRequest("POST", url, &buffer)
+	req, err := http.NewRequest("POST", url, buffer)
 	if err != nil {
 		return nil, err
 	}
 
-	req.Header.Set("Content-Type", writer.FormDataContentType())
+	contenttype := writer.FormDataContentType()
+	req.Header.Set("Content-Type", contenttype)
 
 	currentUser, err := httpService.getUserToken()
 	if err != nil {

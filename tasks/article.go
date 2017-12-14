@@ -4,7 +4,6 @@ import (
 	"fmt"
 	"io/ioutil"
 	"log"
-	"strings"
 	"time"
 
 	"github.com/ericaro/frontmatter"
@@ -35,8 +34,8 @@ type ImportArticle struct {
 	PublishDate string   `yaml:"publishDate"`
 	DataSource  string   `yaml:"dataSource"`
 	Author      string   `yaml:"author"`
-	Categories  string   `yaml:"categories"`
-	Tags        string   `yaml:"tags"`
+	Categories  []string `yaml:"categories"`
+	Tags        []string `yaml:"tags"`
 	Content     string   `fm:"content" yaml:"-"`
 }
 
@@ -128,8 +127,8 @@ func (articleTask *Task) LoadArticle(bypassQuestions bool, fileName string) (*Ar
 	}
 
 	article.DataSource = fileName
-	article.Categories, _ = getStringArray(importfile.Categories)
-	article.Tags, _ = getStringArray(importfile.Tags)
+	article.Categories = importfile.Categories
+	article.Tags = importfile.Tags
 	article.Images = importfile.Images
 	article.Content = importfile.Content
 
@@ -248,8 +247,8 @@ func (articleTask *Task) saveMarkdownFile(article Article) error {
 		article.PublishDate.Format("01/02/2006"),
 		article.DataSource,
 		article.Author,
-		strings.Join(article.Categories, ","),
-		strings.Join(article.Tags, ","),
+		article.Categories,
+		article.Tags,
 		article.Content,
 	}
 
