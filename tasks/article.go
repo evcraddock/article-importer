@@ -4,6 +4,7 @@ import (
 	"fmt"
 	"io/ioutil"
 	"log"
+	"strings"
 	"time"
 
 	"github.com/ericaro/frontmatter"
@@ -80,10 +81,9 @@ func (articleTask *Task) GetArticle(id string) (*Article, error) {
 }
 
 //LoadArticle loads an existing article
-func (articleTask *Task) LoadArticle(bypassQuestions bool, fileName string) (*Article, error) {
+func (articleTask *Task) LoadArticle(fileName string, bypassQuestions bool) (*Article, error) {
 	if fileName == "" {
 		fileName = AskForStringValue("Import File location", "", false)
-		// fileName = "2017-02-05-how-to-beat-burnout.md"
 	}
 
 	var article = &Article{
@@ -95,8 +95,7 @@ func (articleTask *Task) LoadArticle(bypassQuestions bool, fileName string) (*Ar
 		Author:      "",
 	}
 
-	importfilename := articleTask.articleLocation + fileName
-	artfile, err := ioutil.ReadFile(importfilename)
+	artfile, err := ioutil.ReadFile(fileName)
 
 	if err != nil || len(artfile) == 0 {
 		return nil, fmt.Errorf("Could not open file")
@@ -122,10 +121,7 @@ func (articleTask *Task) LoadArticle(bypassQuestions bool, fileName string) (*Ar
 	article.URL = importfile.URL
 	article.Author = importfile.Author
 
-	if importfile.Banner != "" {
-		article.Banner = importfile.Banner
-	}
-
+	article.Banner = importfile.Banner
 	article.DataSource = fileName
 	article.Categories = importfile.Categories
 	article.Tags = importfile.Tags
@@ -166,11 +162,7 @@ func (articleTask *Task) SaveArticle(article *Article, bypassquestions bool) (*A
 	}
 
 	if article.Banner == "" || bypassquestions == false {
-		article.Banner = AskForStringValue("Banner Image FileName", "", false)
-	}
-
-	if article.DataSource == "" || bypassquestions == false {
-		article.DataSource = AskForStringValue("Data source", article.DataSource, false)
+		article.Banner = AskForStringValue("Banner Image FileName", article.Banner, false)
 	}
 
 	if article.Author == "" || bypassquestions == false {
@@ -210,10 +202,16 @@ func (articleTask *Task) SaveArticle(article *Article, bypassquestions bool) (*A
 	imageEndPoint := fmt.Sprintf("images/%v", article.ID)
 
 	for _, imageFilePath := range article.Images {
-		_, err := articleTask.service.Upload(imageEndPoint, imageFilePath)
-		if err != nil {
-			fmt.Printf("Could not save images, please try again. %v \n", err.Error())
-			continue
+		strfile := strings.Split(imageFilePath, "/")
+		filename := strfile[len(strfile)-1]
+
+		imageLink := articleTask.service.ServiceURL + "/" + imageEndPoint + "/" + filename
+		if !articleTask.service.ResolveLink(imageLink) {
+			_, err := articleTask.service.Upload(imageEndPoint, imageFilePath)
+			if err != nil {
+				fmt.Printf("Could not save images %v, please try again. %v \n", imageLink, err.Error())
+				continue
+			}
 		}
 	}
 
@@ -235,7 +233,7 @@ func (articleTask *Task) UpdateArticle(bypassQuestions bool) (*Article, error) {
 }
 
 func (articleTask *Task) saveMarkdownFile(article Article) error {
-	filelocation := articleTask.articleLocation + article.DataSource
+	filelocation := article.DataSource
 	fmt.Printf("Saving Markdown file to %s\n", filelocation)
 
 	var importfile = &ImportArticle{

@@ -6,8 +6,7 @@ import (
 
 //Settings object for storing settings
 type Settings struct {
-	Auth            Authorization
-	ArticleLocation string
+	Auth Authorization
 }
 
 //Authorization object for keeping credentials
@@ -22,7 +21,6 @@ type Authorization struct {
 func NewConfiguration() *Settings {
 	serviceURL := getEnvironmentVariable("Article_Service_Url", "http://localhost:9000")
 	authKey := getEnvironmentVariable("Ariticle_Server_AuthKey", "VIrPcAi4Rff0gBwdWklRl3ywMwgC6mZH")
-	articleLocation := getEnvironmentVariable("Article_Location", "~/articles/")
 
 	authSettings := &Authorization{
 		authKey,
@@ -33,7 +31,6 @@ func NewConfiguration() *Settings {
 
 	configSettings := &Settings{
 		*authSettings,
-		articleLocation,
 	}
 
 	return configSettings

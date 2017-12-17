@@ -52,7 +52,7 @@ func main() {
 			},
 			Action: func(c *cli.Context) error {
 				task := tasks.NewTask(configSettings)
-				article, err := task.LoadArticle(c.Bool("force"), c.String("filename"))
+				article, err := task.LoadArticle(c.String("filename"), c.Bool("force"))
 				if err != nil {
 					return cli.NewExitError("Error Message: "+err.Error(), 86)
 				}

@@ -18,8 +18,7 @@ import (
 
 //Task stores task information
 type Task struct {
-	service         *service.HTTPService
-	articleLocation string
+	service *service.HTTPService
 }
 
 //NewTask creates new instance of a Task
@@ -28,7 +27,6 @@ func NewTask(settings *config.Settings) *Task {
 
 	task := &Task{
 		service,
-		settings.ArticleLocation,
 	}
 
 	return task
