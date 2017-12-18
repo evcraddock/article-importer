@@ -1,7 +1,6 @@
 package tasks
 
 import (
-	"encoding/json"
 	"fmt"
 	"io/ioutil"
 	"log"
@@ -13,9 +12,10 @@ import (
 
 //Article represents article information
 type Article struct {
-	ID          string    `json:"id"`
+	ID          string    `json:"id" `
 	Title       string    `json:"title"`
 	URL         string    `json:"url"`
+	Images      []string  `json:"images"`
 	Banner      string    `json:"banner"`
 	PublishDate time.Time `json:"publishDate"`
 	DataSource  string    `json:"dataSource"`
@@ -27,201 +27,17 @@ type Article struct {
 
 //ImportArticle represents and article that can be marshalled to yaml
 type ImportArticle struct {
-	ID          string `yaml:"id"`
-	Title       string `yaml:"title"`
-	URL         string `yaml:"url"`
-	Banner      string `yaml:"banner"`
-	PublishDate string `yaml:"publishDate"`
-	DataSource  string `yaml:"dataSource"`
-	Author      string `yaml:"author"`
-	Categories  string `yaml:"categories"`
-	Tags        string `yaml:"tags"`
-	Content     string `fm:"content" yaml:"-"`
-}
-
-func (articleTask *Task) saveMarkdownFile(article Article) error {
-
-	filelocation := articleTask.articleLocation + article.DataSource
-	fmt.Printf("Saving Markdown file to %s\n", filelocation)
-
-	var importfile = &ImportArticle{
-		article.ID,
-		article.Title,
-		article.URL,
-		article.Banner,
-		article.PublishDate.Format("01/02/2006"),
-		article.DataSource,
-		article.Author,
-		strings.Join(article.Categories, ", "),
-		strings.Join(article.Tags, ", "),
-		article.Content,
-	}
-
-	data, err := frontmatter.Marshal(importfile)
-	if err != nil {
-		fmt.Printf("err! %s", err.Error())
-	}
-
-	err = ioutil.WriteFile(filelocation, data, 0644)
-	if err != nil {
-		log.Fatal(err)
-	}
-
-	return err
-}
-
-//SaveArticle saves input data as an article and backups to a local md file
-func (articleTask *Task) SaveArticle(article *Article, bypassquestions bool) (*Article, error) {
-	if articleTask.service.Username == "" {
-		articleTask.service.Username = AskForStringValue("Username", "", true)
-	}
-
-	if articleTask.service.Password == "" {
-		articleTask.service.Password = AskForStringValue("Password", "", true)
-	}
-
-	if articleTask.service.ServiceURL == "" {
-		articleTask.service.ServiceURL = AskForStringValue("Service Url", "", true)
-	}
-
-	if articleTask.service.AuthKey == "" {
-		log.Fatal("AuthKey environment variable must be set.")
-	}
-
-	if article.Title == "" || bypassquestions == false {
-		article.Title = AskForStringValue("Article Title", article.Title, true)
-	}
-
-	if bypassquestions == false {
-		article.PublishDate = AskForDateValue("Publish Date", article.PublishDate)
-	}
-
-	if article.URL == "" || bypassquestions == false {
-		article.URL = AskForStringValue("Permalink", article.URL, true)
-	}
-
-	if article.Banner == "" || bypassquestions == false {
-		for {
-			imageFilePath := AskForStringValue("Banner Url", article.Banner, false)
-
-			if articleTask.service.ResolveLink(imageFilePath) {
-				article.Banner = imageFilePath
-				break
-			}
-
-			if imageFilePath != "" {
-				b, err := articleTask.service.Upload("images", imageFilePath)
-
-				if err != nil {
-					fmt.Printf("Could not save images, please try again.\n")
-					continue
-				}
-
-				img := &Image{}
-				json.Unmarshal(b, img)
-				article.Banner = articleTask.service.ServiceURL + "/images/" + img.ID
-			}
-
-			break
-		}
-	}
-
-	if article.DataSource == "" || bypassquestions == false {
-		article.DataSource = AskForStringValue("Data source", article.DataSource, false)
-	}
-
-	if article.Author == "" || bypassquestions == false {
-		article.Author = AskForStringValue("Author Name", article.Author, true)
-	}
-
-	if bypassquestions == false {
-		article.Categories = AskForCSV("Categories (csv)", article.Categories)
-	}
-
-	if bypassquestions == false {
-		article.Tags = AskForCSV("Tags (csv)", article.Tags)
-	}
-
-	requestMethod := "POST"
-	requestURL := "articles"
-
-	if article.ID != "" {
-		requestMethod = "PUT"
-		requestURL = "articles/" + article.ID
-	}
-
-	err := articleTask.service.SendRequest(requestMethod, requestURL, article)
-
-	if err != nil {
-		fmt.Printf("Unable to Save File, %s \n", err.Error())
-		return article, err
-	}
-
-	articleTask.saveMarkdownFile(*article)
-
-	return article, err
-}
-
-//UpdateArticle updates and existing article
-func (articleTask *Task) UpdateArticle(bypassQuestions bool) (*Article, error) {
-
-	article, err := articleTask.GetArticle()
-
-	if err != nil {
-		log.Fatal(err)
-	}
-
-	return articleTask.SaveArticle(article, bypassQuestions)
-}
-
-//LoadArticle loads an existing article
-func (articleTask *Task) LoadArticle(bypassQuestions bool) (*Article, error) {
-	fileName := AskForStringValue("Import File location", "", false)
-	var article = &Article{
-		Title:       "",
-		PublishDate: time.Now(),
-		URL:         "",
-		Banner:      "",
-		DataSource:  "",
-		Author:      "",
-	}
-
-	importfilename := articleTask.articleLocation + fileName
-	artfile, err := ioutil.ReadFile(importfilename)
-	if err != nil {
-		return articleTask.SaveArticle(article, false)
-	}
-
-	importfile := new(ImportArticle)
-	err = frontmatter.Unmarshal(artfile, importfile)
-	if err != nil {
-		fmt.Printf("Error unmarshaling yaml file: %s", err.Error())
-		return articleTask.SaveArticle(article, false)
-	}
-
-	if importfile.ID != "" {
-		article.ID = importfile.ID
-	}
-
-	importPublishDate, err := time.Parse("01/02/2006", importfile.PublishDate)
-	if err == nil {
-		article.PublishDate = importPublishDate
-	}
-
-	article.Title = importfile.Title
-	article.URL = importfile.URL
-	article.Author = importfile.Author
-
-	if importfile.Banner != "" {
-		article.Banner = importfile.Banner
-	}
-
-	article.DataSource = fileName
-	article.Categories, _ = getStringArray(importfile.Categories)
-	article.Tags, _ = getStringArray(importfile.Tags)
-	article.Content = importfile.Content
-
-	return articleTask.SaveArticle(article, bypassQuestions)
+	ID          string   `yaml:"id"`
+	Title       string   `yaml:"title"`
+	URL         string   `yaml:"url"`
+	Images      []string `yaml:"images"`
+	Banner      string   `yaml:"banner"`
+	PublishDate string   `yaml:"publishDate"`
+	DataSource  string   `yaml:"dataSource"`
+	Author      string   `yaml:"author"`
+	Categories  []string `yaml:"categories"`
+	Tags        []string `yaml:"tags"`
+	Content     string   `fm:"content" yaml:"-"`
 }
 
 //DeleteArticle deletes the specified article
@@ -249,8 +65,10 @@ func (articleTask *Task) DeleteArticle() (string, error) {
 }
 
 //GetArticle gets an article by datasource
-func (articleTask *Task) GetArticle() (*Article, error) {
-	id := AskForStringValue("Article Id", "", true)
+func (articleTask *Task) GetArticle(id string) (*Article, error) {
+	if id == "" {
+		id = AskForStringValue("Article Id", "", true)
+	}
 
 	var article = &Article{}
 	err := articleTask.service.Get("articles", id, article)
@@ -260,4 +78,187 @@ func (articleTask *Task) GetArticle() (*Article, error) {
 	}
 
 	return article, err
+}
+
+//LoadArticle loads an existing article
+func (articleTask *Task) LoadArticle(fileName string, bypassQuestions bool) (*Article, error) {
+	if fileName == "" {
+		fileName = AskForStringValue("Import File location", "", false)
+	}
+
+	var article = &Article{
+		Title:       "",
+		PublishDate: time.Now(),
+		URL:         "",
+		Banner:      "",
+		DataSource:  "",
+		Author:      "",
+	}
+
+	artfile, err := ioutil.ReadFile(fileName)
+
+	if err != nil || len(artfile) == 0 {
+		return nil, fmt.Errorf("Could not open file")
+	}
+
+	importfile := new(ImportArticle)
+	err = frontmatter.Unmarshal(artfile, importfile)
+	if err != nil {
+		msg := fmt.Errorf("Error unmarshaling yaml file: %s", err.Error())
+		return nil, msg
+	}
+
+	if importfile.ID != "" {
+		article.ID = importfile.ID
+	}
+
+	importPublishDate, err := time.Parse("01/02/2006", importfile.PublishDate)
+	if err == nil {
+		article.PublishDate = importPublishDate
+	}
+
+	article.Title = importfile.Title
+	article.URL = importfile.URL
+	article.Author = importfile.Author
+
+	article.Banner = importfile.Banner
+	article.DataSource = fileName
+	article.Categories = importfile.Categories
+	article.Tags = importfile.Tags
+	article.Images = importfile.Images
+	article.Content = importfile.Content
+
+	return articleTask.SaveArticle(article, bypassQuestions)
+}
+
+//SaveArticle saves input data as an article and backups to a local md file
+func (articleTask *Task) SaveArticle(article *Article, bypassquestions bool) (*Article, error) {
+	if articleTask.service.Username == "" {
+		articleTask.service.Username = AskForStringValue("Username", "", true)
+	}
+
+	if articleTask.service.Password == "" {
+		articleTask.service.Password = AskForHiddenStringValue("Password", "", true)
+	}
+
+	if articleTask.service.ServiceURL == "" {
+		articleTask.service.ServiceURL = AskForStringValue("Service Url", "", true)
+	}
+
+	if articleTask.service.AuthKey == "" {
+		log.Fatal("AuthKey environment variable must be set.")
+	}
+
+	if article.Title == "" || bypassquestions == false {
+		article.Title = AskForStringValue("Article Title", article.Title, true)
+	}
+
+	if bypassquestions == false {
+		article.PublishDate = AskForDateValue("Publish Date", article.PublishDate)
+	}
+
+	if article.URL == "" || bypassquestions == false {
+		article.URL = AskForStringValue("Permalink", article.URL, true)
+	}
+
+	if article.Banner == "" || bypassquestions == false {
+		article.Banner = AskForStringValue("Banner Image FileName", article.Banner, false)
+	}
+
+	if article.Author == "" || bypassquestions == false {
+		article.Author = AskForStringValue("Author Name", article.Author, true)
+	}
+
+	if bypassquestions == false {
+		article.Categories = AskForCSV("Categories (csv)", article.Categories)
+	}
+
+	if bypassquestions == false {
+		article.Tags = AskForCSV("Tags (csv)", article.Tags)
+	}
+
+	requestMethod := "POST"
+	requestURL := "articles"
+
+	if article.ID != "" {
+
+		requestMethod = "PUT"
+		requestURL = "articles/" + article.ID
+		_, err := articleTask.GetArticle(article.ID)
+
+		if err != nil {
+			fmt.Printf("Article Could not be found \n")
+			return article, err
+		}
+	}
+
+	err := articleTask.service.SendRequest(requestMethod, requestURL, article)
+
+	if err != nil {
+		fmt.Printf("Unable to Save File, %s \n", err.Error())
+		return article, err
+	}
+
+	imageEndPoint := fmt.Sprintf("images/%v", article.ID)
+
+	for _, imageFilePath := range article.Images {
+		strfile := strings.Split(imageFilePath, "/")
+		filename := strfile[len(strfile)-1]
+
+		imageLink := articleTask.service.ServiceURL + "/" + imageEndPoint + "/" + filename
+		if !articleTask.service.ResolveLink(imageLink) {
+			_, err := articleTask.service.Upload(imageEndPoint, imageFilePath)
+			if err != nil {
+				fmt.Printf("Could not save images %v, please try again. %v \n", imageLink, err.Error())
+				continue
+			}
+		}
+	}
+
+	articleTask.saveMarkdownFile(*article)
+
+	return article, err
+}
+
+//UpdateArticle updates and existing article
+func (articleTask *Task) UpdateArticle(bypassQuestions bool) (*Article, error) {
+
+	article, err := articleTask.GetArticle("")
+
+	if err != nil {
+		log.Fatal(err)
+	}
+
+	return articleTask.SaveArticle(article, bypassQuestions)
+}
+
+func (articleTask *Task) saveMarkdownFile(article Article) error {
+	filelocation := article.DataSource
+	fmt.Printf("Saving Markdown file to %s\n", filelocation)
+
+	var importfile = &ImportArticle{
+		article.ID,
+		article.Title,
+		article.URL,
+		article.Images,
+		article.Banner,
+		article.PublishDate.Format("01/02/2006"),
+		article.DataSource,
+		article.Author,
+		article.Categories,
+		article.Tags,
+		article.Content,
+	}
+
+	data, err := frontmatter.Marshal(importfile)
+	if err != nil {
+		fmt.Printf("err! %s", err.Error())
+	}
+
+	err = ioutil.WriteFile(filelocation, data, 0644)
+	if err != nil {
+		log.Fatal(err)
+	}
+
+	return err
 }

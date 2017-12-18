@@ -21,7 +21,7 @@ func (linkTask *Task) saveLink(link *Link) (*Link, error) {
 	}
 
 	if linkTask.service.Password == "" {
-		linkTask.service.Password = AskForStringValue("Password", "", true)
+		linkTask.service.Password = AskForHiddenStringValue("Password", "", true)
 	}
 
 	if linkTask.service.ServiceURL == "" {
