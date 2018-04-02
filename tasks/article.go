@@ -4,6 +4,7 @@ import (
 	"fmt"
 	"io/ioutil"
 	"log"
+	"path/filepath"
 	"strings"
 	"time"
 
@@ -200,14 +201,16 @@ func (articleTask *Task) SaveArticle(article *Article, bypassquestions bool) (*A
 	}
 
 	imageEndPoint := fmt.Sprintf("images/%v", article.ID)
+	datasourcePath := filepath.Dir(article.DataSource)
 
 	for _, imageFilePath := range article.Images {
+		imagepath := datasourcePath + "/" + imageFilePath
 		strfile := strings.Split(imageFilePath, "/")
 		filename := strfile[len(strfile)-1]
 
 		imageLink := articleTask.service.ServiceURL + "/" + imageEndPoint + "/" + filename
 		if !articleTask.service.ResolveLink(imageLink) {
-			_, err := articleTask.service.Upload(imageEndPoint, imageFilePath)
+			_, err := articleTask.service.Upload(imageEndPoint, imagepath)
 			if err != nil {
 				fmt.Printf("Could not save images %v, please try again. %v \n", imageLink, err.Error())
 				continue
