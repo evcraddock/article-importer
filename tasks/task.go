@@ -134,6 +134,18 @@ func AskForDateValue(label string, defaultValue time.Time) time.Time {
 	}
 }
 
+//GetFileName returns the filename from a path
+func GetFileName(value, delimiter string) string {
+	fullarray := strings.Split(value, delimiter)
+	lastvalue := fullarray[len(fullarray)-1]
+
+	if lastvalue == "" {
+		return fullarray[len(fullarray)-2]
+	}
+
+	return lastvalue
+}
+
 func getStringArray(value string) ([]string, error) {
 	r := csv.NewReader(strings.NewReader(value))
 	return r.Read()
