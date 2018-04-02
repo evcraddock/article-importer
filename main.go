@@ -120,6 +120,24 @@ func main() {
 				return nil
 			},
 		},
+		{
+			Name:  "import-article",
+			Usage: "create article from hugo yml file",
+			Flags: []cli.Flag{
+				cli.BoolFlag{Name: "force, f"},
+				cli.StringFlag{Name: "filename"},
+			},
+			Action: func(c *cli.Context) error {
+				task := tasks.NewTask(configSettings)
+				article, err := task.ImportArticle(c.String("filename"))
+				if err != nil {
+					return cli.NewExitError("Error Message: "+err.Error(), 86)
+				}
+
+				fmt.Printf("Successfull Created Article folder %s /n", article.DataSource)
+				return nil
+			},
+		},
 	}
 
 	app.Run(os.Args)

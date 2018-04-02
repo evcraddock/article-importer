@@ -4,6 +4,7 @@ import (
 	"fmt"
 	"io/ioutil"
 	"log"
+	"os"
 	"path/filepath"
 	"strings"
 	"time"
@@ -18,7 +19,7 @@ type Article struct {
 	URL         string    `json:"url"`
 	Images      []string  `json:"images"`
 	Banner      string    `json:"banner"`
-	PublishDate time.Time `json:"publishDate"`
+	PublishDate time.Time `json:"publishDate" json:"date"`
 	DataSource  string    `json:"dataSource"`
 	Author      string    `json:"author"`
 	Categories  []string  `json:"categories"`
@@ -28,17 +29,30 @@ type Article struct {
 
 //ImportArticle represents and article that can be marshalled to yaml
 type ImportArticle struct {
-	ID          string   `yaml:"id"`
+	ID          string   `yaml:"id,omitempty"`
 	Title       string   `yaml:"title"`
 	URL         string   `yaml:"url"`
 	Images      []string `yaml:"images"`
 	Banner      string   `yaml:"banner"`
-	PublishDate string   `yaml:"publishDate"`
+	PublishDate string   `yaml:"date"`
 	DataSource  string   `yaml:"dataSource"`
 	Author      string   `yaml:"author"`
 	Categories  []string `yaml:"categories"`
 	Tags        []string `yaml:"tags"`
 	Content     string   `fm:"content" yaml:"-"`
+}
+
+//HugoArticle represents and article that can be marshalled to yaml
+type HugoArticle struct {
+	Title      string   `yaml:"title"`
+	URL        string   `yaml:"url"`
+	Banner     string   `yaml:"banner"`
+	Date       string   `yaml:"date"`
+	Author     string   `yaml:"author"`
+	Categories []string `yaml:"categories"`
+	Tags       []string `yaml:"tags"`
+	Layout     string   `yaml:"layout"`
+	Content    string   `fm:"content" yaml:"-"`
 }
 
 //DeleteArticle deletes the specified article
@@ -130,6 +144,70 @@ func (articleTask *Task) LoadArticle(fileName string, bypassQuestions bool) (*Ar
 	article.Content = importfile.Content
 
 	return articleTask.SaveArticle(article, bypassQuestions)
+}
+
+//ImportArticle loads an existing article
+func (articleTask *Task) ImportArticle(fileName string) (*Article, error) {
+	if fileName == "" {
+		fileName = AskForStringValue("Import File location", "", false)
+	}
+
+	var article = &Article{
+		Title:       "",
+		PublishDate: time.Now(),
+		URL:         "",
+		Banner:      "",
+		DataSource:  "",
+		Author:      "",
+	}
+
+	artfile, err := ioutil.ReadFile(fileName)
+
+	if err != nil || len(artfile) == 0 {
+		return nil, fmt.Errorf("Could not open file")
+	}
+
+	importfile := new(HugoArticle)
+	err = frontmatter.Unmarshal(artfile, importfile)
+	if err != nil {
+		msg := fmt.Errorf("Error unmarshaling yaml file: %s", err.Error())
+		return nil, msg
+	}
+
+	articleurl := GetFileName(importfile.URL, "/")
+	articlepath := filepath.Dir(fileName)
+	newarticlepath := articlepath + "/" + articleurl
+
+	if _, err := os.Stat(newarticlepath); os.IsNotExist(err) {
+		err = os.Mkdir(newarticlepath, 0755)
+		if err != nil {
+			msg := fmt.Errorf("Error creating directory: %s /\n ", err.Error())
+			return nil, msg
+		}
+	}
+
+	importPublishDate, err := time.Parse("2006-01-02", importfile.Date)
+	if err == nil {
+		article.PublishDate = importPublishDate
+	}
+
+	article.Title = importfile.Title
+	article.URL = articleurl + ".md"
+	article.Author = importfile.Author
+	article.Banner = GetFileName(importfile.Banner, "/")
+
+	if article.Banner != "" {
+		article.Images = []string{article.Banner}
+	}
+
+	article.DataSource = newarticlepath + "/" + article.URL
+	article.Categories = importfile.Categories
+	article.Tags = importfile.Tags
+	article.Content = importfile.Content
+
+	articleTask.saveMarkdownFile(*article)
+
+	return article, err
 }
 
 //SaveArticle saves input data as an article and backups to a local md file
