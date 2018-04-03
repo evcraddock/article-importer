@@ -201,11 +201,29 @@ func (articleTask *Task) ImportArticle(fileName string) (*Article, error) {
 	}
 
 	article.DataSource = newarticlepath + "/" + article.URL
-	article.Categories = importfile.Categories
-	article.Tags = importfile.Tags
+
+	for _, cat := range importfile.Categories {
+		newcat := strings.ToLower(cat)
+		article.Categories = append(article.Categories, newcat)
+	}
+
+	for _, tag := range importfile.Tags {
+		newtag := strings.ToLower(tag)
+		article.Tags = append(article.Tags, newtag)
+	}
+
 	article.Content = importfile.Content
 
 	articleTask.saveMarkdownFile(*article)
+
+	if _, err := os.Stat(fileName); err == nil {
+		fmt.Printf("Removing file: %s \n", fileName)
+		err = os.Remove(fileName)
+		if err != nil {
+			msg := fmt.Errorf("Error Deleting import yaml file: %s \n ", err.Error())
+			return nil, msg
+		}
+	}
 
 	return article, err
 }
@@ -315,7 +333,6 @@ func (articleTask *Task) UpdateArticle(bypassQuestions bool) (*Article, error) {
 
 func (articleTask *Task) saveMarkdownFile(article Article) error {
 	filelocation := article.DataSource
-	fmt.Printf("Saving Markdown file to %s\n", filelocation)
 
 	var importfile = &ImportArticle{
 		article.ID,

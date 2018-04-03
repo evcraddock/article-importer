@@ -134,7 +134,7 @@ func main() {
 					return cli.NewExitError("Error Message: "+err.Error(), 86)
 				}
 
-				fmt.Printf("Successfull Created Article folder %s /n", article.DataSource)
+				fmt.Printf("Successfull Created Article folder %s \n ", article.DataSource)
 				return nil
 			},
 		},
