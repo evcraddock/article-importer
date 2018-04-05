@@ -65,16 +65,16 @@ func main() {
 			Name:  "update-article",
 			Usage: "update an existing article",
 			Flags: []cli.Flag{
-				cli.BoolFlag{Name: "force, f"},
+				cli.StringFlag{Name: "filename"},
 			},
 			Action: func(c *cli.Context) error {
 				task := tasks.NewTask(configSettings)
-				article, err := task.UpdateArticle(c.Bool("force"))
+				err := task.UpdateArticles(c.String("filename"), true)
 				if err != nil {
 					return cli.NewExitError(err.Error(), 86)
 				}
 
-				fmt.Printf("Successfull Updated Article %s on %v\n", article.Title, article.PublishDate)
+				fmt.Printf("Successfull Updated Articles\n ")
 				return nil
 			},
 		},
@@ -129,12 +129,12 @@ func main() {
 			},
 			Action: func(c *cli.Context) error {
 				task := tasks.NewTask(configSettings)
-				article, err := task.ImportArticle(c.String("filename"))
+				err := task.ImportArticles(c.String("filename"))
 				if err != nil {
 					return cli.NewExitError("Error Message: "+err.Error(), 86)
 				}
 
-				fmt.Printf("Successfull Created Article folder %s /n", article.DataSource)
+				fmt.Printf("Successfull Imported Yaml files")
 				return nil
 			},
 		},
