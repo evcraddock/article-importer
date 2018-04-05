@@ -204,10 +204,6 @@ func (httpService *HTTPService) SendRequest(verb string, endpoint string, target
 		err = json.NewDecoder(res.Body).Decode(target)
 	}
 
-	if err != nil {
-		fmt.Printf("Error sending request: %s /n", err.Error())
-	}
-
 	return err
 }
 

@@ -146,6 +146,49 @@ func (articleTask *Task) LoadArticle(fileName string, bypassQuestions bool) (*Ar
 	return articleTask.SaveArticle(article, bypassQuestions)
 }
 
+//ImportArticles imports list of articles in path
+func (articleTask *Task) ImportArticles(filedir string) error {
+	if filedir == "" {
+		filedir = AskForStringValue("Import File or Folder", "", false)
+	}
+
+	isdir, err := isDirectory(filedir)
+
+	if err != nil {
+		return err
+	}
+
+	if isdir {
+		files, err := ioutil.ReadDir(filedir)
+		if err != nil {
+			return err
+		}
+
+		for _, f := range files {
+
+			filename := f.Name()
+			extension := filepath.Ext(filename)
+			// fmt.Printf("filename: %s ext: %s \n ", filename, extension)
+
+			if extension == ".md" {
+				importfilepath := filedir + "/" + filename
+				fmt.Printf("importing file: %s \n ", importfilepath)
+
+				_, err := articleTask.ImportArticle(importfilepath)
+				if err != nil {
+					fmt.Printf("error: %s \n ", err.Error())
+					return err
+				}
+			}
+		}
+	} else {
+		_, err := articleTask.ImportArticle(filedir)
+		return err
+	}
+
+	return nil
+}
+
 //ImportArticle loads an existing article
 func (articleTask *Task) ImportArticle(fileName string) (*Article, error) {
 	if fileName == "" {
@@ -175,6 +218,7 @@ func (articleTask *Task) ImportArticle(fileName string) (*Article, error) {
 	}
 
 	articleurl := GetFileName(importfile.URL, "/")
+
 	articlepath := filepath.Dir(fileName)
 	newarticlepath := articlepath + "/" + articleurl
 
@@ -194,7 +238,10 @@ func (articleTask *Task) ImportArticle(fileName string) (*Article, error) {
 	article.Title = importfile.Title
 	article.URL = articleurl + ".md"
 	article.Author = importfile.Author
-	article.Banner = GetFileName(importfile.Banner, "/")
+
+	if importfile.Banner != "" {
+		article.Banner = GetFileName(importfile.Banner, "/")
+	}
 
 	if article.Banner != "" {
 		article.Images = []string{article.Banner}
@@ -258,7 +305,7 @@ func (articleTask *Task) SaveArticle(article *Article, bypassquestions bool) (*A
 		article.URL = AskForStringValue("Permalink", article.URL, true)
 	}
 
-	if article.Banner == "" || bypassquestions == false {
+	if bypassquestions == false {
 		article.Banner = AskForStringValue("Banner Image FileName", article.Banner, false)
 	}
 
@@ -284,8 +331,8 @@ func (articleTask *Task) SaveArticle(article *Article, bypassquestions bool) (*A
 		_, err := articleTask.GetArticle(article.ID)
 
 		if err != nil {
-			fmt.Printf("Article Could not be found \n")
-			return article, err
+			requestMethod = "POST"
+			article.ID = ""
 		}
 	}
 
@@ -319,16 +366,47 @@ func (articleTask *Task) SaveArticle(article *Article, bypassquestions bool) (*A
 	return article, err
 }
 
-//UpdateArticle updates and existing article
-func (articleTask *Task) UpdateArticle(bypassQuestions bool) (*Article, error) {
-
-	article, err := articleTask.GetArticle("")
-
-	if err != nil {
-		log.Fatal(err)
+//UpdateArticles updates and articles in a folder
+func (articleTask *Task) UpdateArticles(filedir string, bypassQuestions bool) error {
+	if filedir == "" {
+		filedir = AskForStringValue("Import File or Folder", "", false)
 	}
 
-	return articleTask.SaveArticle(article, bypassQuestions)
+	subDirToSkip := []string{".git", ".DS_Store"}
+	err := filepath.Walk(filedir, func(path string, info os.FileInfo, err error) error {
+		if err != nil {
+			fmt.Printf("prevent panic by handling failure accessing a path %q: %v\n", filedir, err)
+			return err
+		}
+
+		if info.IsDir() && contains(subDirToSkip, info.Name()) {
+			fmt.Printf("skipping a dir without errors: %+v \n", info.Name())
+			return filepath.SkipDir
+		}
+
+		if info.IsDir() == false {
+			filename := info.Name()
+			extension := filepath.Ext(filename)
+
+			if extension == ".md" {
+				fmt.Printf("updating file: %s \n ", path)
+
+				_, err := articleTask.LoadArticle(path, bypassQuestions)
+				if err != nil {
+					return err
+				}
+			}
+		}
+
+		fmt.Printf("visited file: %q\n", path)
+		return nil
+	})
+
+	if err != nil {
+		return err
+	}
+
+	return nil
 }
 
 func (articleTask *Task) saveMarkdownFile(article Article) error {

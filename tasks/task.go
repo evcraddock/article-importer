@@ -151,6 +151,11 @@ func getStringArray(value string) ([]string, error) {
 	return r.Read()
 }
 
+func isDirectory(path string) (bool, error) {
+	fileInfo, err := os.Stat(path)
+	return fileInfo.IsDir(), err
+}
+
 func removeWhiteSpace(str string) string {
 	return strings.Map(func(r rune) rune {
 		if unicode.IsSpace(r) {
@@ -158,4 +163,13 @@ func removeWhiteSpace(str string) string {
 		}
 		return r
 	}, str)
+}
+
+func contains(a []string, x string) bool {
+	for _, n := range a {
+		if x == n {
+			return true
+		}
+	}
+	return false
 }
