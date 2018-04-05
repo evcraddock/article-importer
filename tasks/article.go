@@ -19,7 +19,7 @@ type Article struct {
 	URL         string    `json:"url"`
 	Images      []string  `json:"images"`
 	Banner      string    `json:"banner"`
-	PublishDate time.Time `json:"publishDate" json:"date"`
+	PublishDate time.Time `json:"publishDate"`
 	DataSource  string    `json:"dataSource"`
 	Author      string    `json:"author"`
 	Categories  []string  `json:"categories"`
@@ -34,7 +34,7 @@ type ImportArticle struct {
 	URL         string   `yaml:"url"`
 	Images      []string `yaml:"images"`
 	Banner      string   `yaml:"banner"`
-	PublishDate string   `yaml:"date"`
+	PublishDate string   `yaml:"publishDate"`
 	DataSource  string   `yaml:"dataSource"`
 	Author      string   `yaml:"author"`
 	Categories  []string `yaml:"categories"`
@@ -398,7 +398,6 @@ func (articleTask *Task) UpdateArticles(filedir string, bypassQuestions bool) er
 			}
 		}
 
-		fmt.Printf("visited file: %q\n", path)
 		return nil
 	})
 
